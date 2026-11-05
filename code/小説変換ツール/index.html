@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小説フォーマット変換ツール (Pixiv & ハーメルン対応)</title>
+  <style>
+    :root {
+      --bg-primary: #12151c;
+      --bg-secondary: #1a1e29;
+      --bg-card: #222736;
+      --bg-input: #171b26;
+      --text-main: #f0f3f8;
+      --text-sub: #9aa5b8;
+      --text-muted: #657187;
+      --border: #2d3448;
+      --border-focus: #4e7dfc;
+      --pixiv-color: #0096fa;
+      --pixiv-hover: #1e9bf6;
+      --pixiv-badge: rgba(0, 150, 250, 0.15);
+      --hameln-color: #2fb380;
+      --hameln-hover: #37c78f;
+      --hameln-badge: rgba(47, 179, 128, 0.15);
+      --accent: #5a78ff;
+      --success: #28a745;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f5f7fb;
+      --bg-secondary: #ffffff;
+      --bg-card: #ffffff;
+      --bg-input: #f8fafc;
+      --text-main: #1e293b;
+      --text-sub: #475569;
+      --text-muted: #94a3b8;
+      --border: #e2e8f0;
+      --border-focus: #3b82f6;
+      --pixiv-color: #0084dc;
+      --pixiv-badge: rgba(0, 132, 220, 0.1);
+      --hameln-color: #1a8f60;
+      --hameln-badge: rgba(26, 143, 96, 0.1);
+      --accent: #3b82f6;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "BIZ UDPGothic", "Hiragino Sans", "Meiryo", sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--pixiv-color), var(--hameln-color));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .brand-text h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button {
+      cursor: pointer;
+      font-family: inherit;
+      border: none;
+      outline: none;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text-sub);
+      background: var(--bg-input);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      padding: 7px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-copy {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .btn-copy-pixiv {
+      background: var(--pixiv-color);
+    }
+    .btn-copy-pixiv:hover {
+      background: var(--pixiv-hover);
+    }
+
+    .btn-copy-hameln {
+      background: var(--hameln-color);
+    }
+    .btn-copy-hameln:hover {
+      background: var(--hameln-hover);
+    }
+
+    .btn-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .btn-icon:hover {
+      background: var(--bg-input);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 20px 24px;
+      max-width: 1700px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Dropzone */
+    .drop-section {
+      background: var(--bg-secondary);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .drop-section.dragover {
+      border-color: var(--accent);
+      background: rgba(90, 120, 255, 0.05);
+    }
+
+    .drop-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .drop-icon {
+      font-size: 26px;
+      color: var(--accent);
+    }
+
+    .drop-text h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .drop-text p {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .drop-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 18px;
+      font-size: 13px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-sub);
+    }
+
+    .stat-item strong {
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-pixiv {
+      background: var(--pixiv-badge);
+      color: var(--pixiv-color);
+    }
+    .badge-hameln {
+      background: var(--hameln-badge);
+      color: var(--hameln-color);
+    }
+
+    /* Content Area - 2 Columns */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      flex: 1;
+      min-height: 580px;
+    }
+
+    @media (max-width: 1080px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Column Panels */
+    .panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Sub Tabs inside right panel */
+    .tab-group {
+      display: flex;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 2px;
+    }
+
+    .tab-btn {
+      padding: 5px 14px;
+      font-size: 12px;
+      border-radius: 4px;
+      color: var(--text-sub);
+      background: transparent;
+    }
+
+    .tab-btn.active-pixiv {
+      background: var(--pixiv-color);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .tab-btn.active-hameln {
+      background: var(--hameln-color);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .tab-btn.active-preview {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Text Editor Area */
+    .editor-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      min-height: 480px;
+      padding: 16px;
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: none;
+      resize: vertical;
+      font-family: "Consolas", "Courier New", "BIZ UDPGothic", monospace;
+      font-size: 13.5px;
+      line-height: 1.7;
+      outline: none;
+    }
+
+    textarea:focus {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Extracted items cards (Title & Caption) */
+    .meta-cards {
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .meta-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .meta-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .meta-content {
+      font-size: 13px;
+      color: var(--text-main);
+      font-weight: 500;
+      max-height: 90px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .panel-footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .panel-footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Settings Modal / Accordion */
+    .options-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      display: none;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      font-size: 12.5px;
+    }
+
+    .options-box.open {
+      display: grid;
+    }
+
+    .option-group h4 {
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--text-sub);
+    }
+
+    .option-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      cursor: pointer;
+    }
+
+    .option-item input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: var(--accent);
+    }
+
+    /* Preview Rendering Container */
+    .preview-container {
+      flex: 1;
+      padding: 24px;
+      background: var(--bg-input);
+      overflow-y: auto;
+      min-height: 480px;
+      font-family: "BIZ UDPMincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+      font-size: 16px;
+      line-height: 2.1;
+      color: var(--text-main);
+    }
+
+    .preview-container .preview-chapter {
+      margin: 28px 0 16px;
+    }
+
+    .preview-container hr {
+      border: 0;
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    .preview-container ruby rt {
+      font-size: 0.6em;
+      color: var(--accent);
+    }
+
+    .pixiv-page-break {
+      border: 1px dashed var(--pixiv-color);
+      color: var(--pixiv-color);
+      background: var(--pixiv-badge);
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 24px 0;
+      text-align: center;
+      font-family: sans-serif;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .pixiv-chapter-tag {
+      color: var(--pixiv-color);
+      font-weight: bold;
+      font-size: 18px;
+      margin: 12px 0;
+      font-family: sans-serif;
+    }
+
+    /* Toast notification */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.25s ease;
+      pointer-events: none;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">文</div>
+      <div class="brand-text">
+        <h1>小説フォーマット変換ツール</h1>
+        <p>Markdown 原稿 ➔ Pixiv 小説記法 ＆ ハーメルン文章装飾 変換＆コピペ</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" id="btnToggleOptions">
+        <span>⚙ 設定</span>
+      </button>
+      <button class="btn-secondary" id="btnLoadSample">
+        <span>📄 サンプル読み込み</span>
+      </button>
+      <button class="btn-icon" id="btnTheme" title="テーマ切り替え">🌓</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Dropzone / File Loader -->
+    <div class="drop-section" id="dropZone">
+      <div class="drop-left">
+        <div class="drop-icon">📁</div>
+        <div class="drop-text">
+          <h3>Markdown ファイルをドラッグ＆ドロップ</h3>
+          <p>またはファイル選択ボタンから読み込み（.md, .txt）/ 左枠への直接ペーストも即時変換されます</p>
+        </div>
+      </div>
+      <div class="drop-right">
+        <input type="file" id="fileInput" accept=".md,.markdown,.txt">
+        <button class="btn-primary" onclick="document.getElementById('fileInput').click()">ファイルを選択</button>
+        <button class="btn-secondary" id="btnClear">クリア</button>
+      </div>
+    </div>
+
+    <!-- Options Box (Collapsible) -->
+    <div class="options-box" id="optionsBox">
+      <div class="option-group">
+        <h4>Pixiv 変換設定</h4>
+        <label class="option-item">
+          <input type="checkbox" id="optPixivFirstNewpage">
+          <span>1章目（先頭）にも [newpage] を付与する</span>
+        </label>
+        <label class="option-item">
+          <input type="checkbox" id="optPixivTitleInBody">
+          <span>本文先頭にタイトルを含める</span>
+        </label>
+        <label class="option-item">
+          <input type="checkbox" id="optPixivCaptionInBody">
+          <span>本文先頭にキャプションを含める</span>
+        </label>
+      </div>
+      <div class="option-group">
+        <h4>ハーメルン 変換設定</h4>
+        <label class="option-item">
+          <input type="checkbox" id="optHamelnBold" checked>
+          <span>太字 **text** を 《b》text《/b》 に変換</span>
+        </label>
+        <label class="option-item">
+          <input type="checkbox" id="optHamelnTitleInBody">
+          <span>本文先頭にタイトルを含める</span>
+        </label>
+        <label class="option-item">
+          <input type="checkbox" id="optHamelnCaptionInBody">
+          <span>本文先頭にあらすじ・前書きを含める</span>
+        </label>
+      </div>
+      <div class="option-group">
+        <h4>共通テキスト整形</h4>
+        <label class="option-item">
+          <input type="checkbox" id="optTrimSpaces" checked>
+          <span>行末の余分な空白を除去</span>
+        </label>
+        <label class="option-item">
+          <input type="checkbox" id="optCompressLines" checked>
+          <span>3行以上の連続空行を2行に圧縮</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat-item">原稿文字数: <strong id="statCharCount">0</strong> 字 (空白除く: <strong id="statCharNoSpace">0</strong> 字)</div>
+      <div class="stat-item">原稿用紙: 約 <strong id="statGenko">0</strong> 枚</div>
+      <div class="stat-item">章数: <strong id="statChapterCount">0</strong></div>
+      <div class="stat-item">ルビ箇所: <strong id="statRubyCount">0</strong></div>
+    </div>
+
+    <!-- 2 Column Workspace -->
+    <div class="workspace">
+      <!-- Left Panel: Input Markdown -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>📝 入力 Markdown</span>
+          </div>
+          <span style="font-size:12px; color:var(--text-muted)">直接入力・編集可能</span>
+        </div>
+        <div class="editor-wrapper">
+          <textarea id="inputMd" placeholder="ここに Markdown の小説原稿を貼り付けるか、上の枠にファイルをドロップしてください。
+
+【記法例】
+# 小説タイトル
+```
+これはキャプション（あらすじ）になります
+```
+## 第1章 出会い
+<ruby><rb>魔法使い</rb><rt>メイガス</rt></ruby>の少年は歩き出した。
+
+## 第2章 激闘
+強敵との戦いが始まる――"></textarea>
+        </div>
+        <div class="panel-footer">
+          <span style="font-size:12px; color:var(--text-sub)" id="inputLineCount">0 行</span>
+          <button class="btn-secondary" id="btnCopyRaw">原稿をコピー</button>
+        </div>
+      </div>
+
+      <!-- Right Panel: Converted Output -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span id="outputTitleLabel">🚀 変換結果</span>
+          </div>
+          <!-- Format Switcher Tabs -->
+          <div class="tab-group">
+            <button class="tab-btn active-pixiv" id="tabPixiv">Pixiv 記法</button>
+            <button class="tab-btn" id="tabHameln">ハーメルン 記法</button>
+            <button class="tab-btn" id="tabPreview">表示プレビュー</button>
+          </div>
+        </div>
+
+        <!-- Extracted Metadata Cards (Title & Caption) -->
+        <div class="meta-cards">
+          <!-- Title Box -->
+          <div class="meta-card">
+            <div class="meta-header">
+              <span>タイトル (#)</span>
+              <button class="btn-copy btn-copy-pixiv" id="btnCopyTitle">タイトルをコピー</button>
+            </div>
+            <div class="meta-content" id="dispTitle">（タイトルなし）</div>
+          </div>
+          <!-- Caption Box -->
+          <div class="meta-card">
+            <div class="meta-header">
+              <span id="captionLabel">キャプション (```)</span>
+              <button class="btn-copy btn-copy-pixiv" id="btnCopyCaption">キャプションをコピー</button>
+            </div>
+            <div class="meta-content" id="dispCaption">（キャプションなし）</div>
+          </div>
+        </div>
+
+        <!-- Output Text Area (Pixiv / Hameln Text) -->
+        <div class="editor-wrapper" id="outputWrapperText">
+          <textarea id="outputText" readonly placeholder="変換結果の本文がここに表示されます。"></textarea>
+        </div>
+
+        <!-- Preview Container -->
+        <div class="preview-container" id="outputWrapperPreview" style="display:none;"></div>
+
+        <div class="panel-footer">
+          <span style="font-size:12px; color:var(--text-sub)" id="outputCharCount">0 文字</span>
+          <div class="panel-footer-actions">
+            <button class="btn-secondary" id="btnDownload">💾 .txt 保存</button>
+            <button class="btn-secondary" id="btnCopyAll">全テキストコピー</button>
+            <button class="btn-copy btn-copy-pixiv" id="btnCopyBody">本文をコピー</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast">コピーしました！</div>
+
+  <script>
+    // --- State ---
+    let currentTab = 'pixiv'; // 'pixiv', 'hameln', 'preview'
+    let sampleNovelText = "# 異世界転生したら最強のチート猫だった件 ～魔王城でまったり昼寝生活～\n\n```\nトラックに轢かれて目覚めたら、なぜか魔王城に住み着く白猫に転生していた！？\nモフモフの身体と規格外のチート魔法を武器に、今日も魔王の膝の上で二度寝を決める――！\n笑いとモフモフが織りなす異世界スローライフファンタジー。\n```\n\n## プロローグ：目覚めたら猫でした\n\n暖かい日差しと、心地よい絨毯の感触。  \nふと目を覚ますと、視界がいつもよりずっと低い。  \n\n「にゃーん？」  \n\n思わず声を出してみたら、自分の口から出たのは情けない猫の鳴き声だった。  \n見下ろせば、ふわふわの白い前足。肉球は綺麗なピンク色をしている。  \n\n（……えっ、俺、猫になってる！？）  \n\n確か、深夜のコンビニ帰りに居眠り運転のトラックから小学生をかばって――そこまでは覚えている。  \nどうやら絵に描いたような<ruby><rb>異世界転生</rb><rt>いせかいてんせい</rt></ruby>を果たしてしまったらしい。  \n\n## 第1章：魔王様との出会い\n\n「おい、こんな所に猫が迷い込んでいるぞ」  \n\n部屋の重厚な扉が開き、漆黒のローブをまとった筋骨隆々の男が入ってきた。  \n頭には禍々しい角、背中には黒い翼。どう見ても<ruby><rb>魔王</rb><rt>まおう</rt></ruby>その人である。  \n\n普通の転生者なら腰を抜かすところだろうが、今の俺には抗えない本能があった。  \n男の手から漂う、**干し肉の極上の香り**。  \n\n「グルニャァ……（飯くれ）」  \n\n俺はすり寄って頭をごつんと押し付けた。  \n魔王は目を見張り、次の瞬間には相好を崩していた。  \n\n「ぐっ……な、なんと愛らしい毛並みだ……！ 今日から貴様は我が城の<ruby><rb>最高名誉顧問猫</rb><rt>さいこうめいよこもんねこ</rt></ruby>だ！」  \n\n世界を滅ぼす魔王が、あっさりとモフモフの軍門に降った瞬間だった。  \n\n## 第2章：伝説の魔力、炸裂？\n\n平和な昼寝ライフが始まったと思いきや、城に招かれざる客がやってきた。  \n教会の放った<ruby><rb>勇者パーティー</rb><rt>ゆうしゃパーティー</rt></ruby>だ。  \n\n「魔王、覚悟――って、なんだあの猫は？」  \n「ふっ、油断するな。あれは魔王が飼う凶悪な魔獣に違いない！」  \n\n昼寝を邪魔されて機嫌を損ねた俺は、軽くあくびをしながら前足をひと振りした。  \n\n「ふにゃー（うるさい、あっち行け）」  \n\n放たれたのは、猫パンチの軌跡を描く<ruby><rb>次元断裂衝撃波</rb><rt>ディメンション・スラッシュ</rt></ruby>。  \n城の訓練場ごと勇者たちの武器が遥か彼方へと吹き飛んでいく。  \n\n「「「バ、バケモノだーーー！！」」」  \n\n脱兎のごとく逃げ出す勇者たちを見送りながら、俺は再び丸くなって目を閉じた。  \n今日も魔王城は平和である。\n";
+    
+    // --- DOM Elements ---
+    const inputMd = document.getElementById('inputMd');
+    const outputText = document.getElementById('outputText');
+    const outputWrapperText = document.getElementById('outputWrapperText');
+    const outputWrapperPreview = document.getElementById('outputWrapperPreview');
+    const dispTitle = document.getElementById('dispTitle');
+    const dispCaption = document.getElementById('dispCaption');
+    const captionLabel = document.getElementById('captionLabel');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const toast = document.getElementById('toast');
+
+    const tabPixiv = document.getElementById('tabPixiv');
+    const tabHameln = document.getElementById('tabHameln');
+    const tabPreview = document.getElementById('tabPreview');
+
+    const btnCopyTitle = document.getElementById('btnCopyTitle');
+    const btnCopyCaption = document.getElementById('btnCopyCaption');
+    const btnCopyBody = document.getElementById('btnCopyBody');
+    const btnCopyAll = document.getElementById('btnCopyAll');
+    const btnDownload = document.getElementById('btnDownload');
+    const btnClear = document.getElementById('btnClear');
+    const btnLoadSample = document.getElementById('btnLoadSample');
+    const btnToggleOptions = document.getElementById('btnToggleOptions');
+    const optionsBox = document.getElementById('optionsBox');
+    const btnTheme = document.getElementById('btnTheme');
+
+    // Stats
+    const statCharCount = document.getElementById('statCharCount');
+    const statCharNoSpace = document.getElementById('statCharNoSpace');
+    const statGenko = document.getElementById('statGenko');
+    const statChapterCount = document.getElementById('statChapterCount');
+    const statRubyCount = document.getElementById('statRubyCount');
+    const inputLineCount = document.getElementById('inputLineCount');
+    const outputCharCount = document.getElementById('outputCharCount');
+
+    // Options Checkboxes
+    const optPixivFirstNewpage = document.getElementById('optPixivFirstNewpage');
+    const optPixivTitleInBody = document.getElementById('optPixivTitleInBody');
+    const optPixivCaptionInBody = document.getElementById('optPixivCaptionInBody');
+    const optHamelnBold = document.getElementById('optHamelnBold');
+    const optHamelnTitleInBody = document.getElementById('optHamelnTitleInBody');
+    const optHamelnCaptionInBody = document.getElementById('optHamelnCaptionInBody');
+    const optTrimSpaces = document.getElementById('optTrimSpaces');
+    const optCompressLines = document.getElementById('optCompressLines');
+
+    // Cached conversion results
+    let currentResults = {
+      pixiv: { title: '', caption: '', body: '', full: '' },
+      hameln: { title: '', caption: '', body: '', full: '' }
+    };
+
+    // --- Converter Logic ---
+    function parseMarkdown(md) {
+      // 1. Title (# Title)
+      let title = "";
+      const titleMatch = md.match(/^#\s+(.+)$/m);
+      let body = md;
+      if (titleMatch) {
+        title = titleMatch[1].trim();
+        body = body.replace(/^#\s+.+$/m, '');
+      }
+
+      // 2. Caption (```...```)
+      const captions = [];
+      const codeFenceRegex = /```(?:[a-zA-Z0-9_-]*\r?\n)?([\s\S]*?)```/g;
+      let match;
+      while ((match = codeFenceRegex.exec(body)) !== null) {
+        if (match[1].trim()) {
+          captions.push(match[1].trim());
+        }
+      }
+      const caption = captions.join('\n\n');
+      body = body.replace(codeFenceRegex, '');
+
+      return { title, caption, body: body.trimStart() };
+    }
+
+    function convertNovel() {
+      const rawMd = inputMd.value;
+      const { title, caption, body: cleanBody } = parseMarkdown(rawMd);
+
+      // Ruby regex: <ruby><rb>...</rb><rt>...</rt></ruby> or <ruby>...<rt>...</rt></ruby>
+      const rubyRegex = /<ruby>(?:<rb>)?([\s\S]+?)(?:<\/rb>)?(?:<rp>[\s\S]*?<\/rp>)?<rt>([\s\S]+?)<\/rt>(?:<rp>[\s\S]*?<\/rp>)?<\/ruby>/g;
+      
+      // Counting stats
+      const rubyMatches = rawMd.match(rubyRegex) || [];
+      const chapterMatches = rawMd.match(/^##\s+(.+)$/gm) || [];
+
+      statCharCount.textContent = rawMd.length.toLocaleString();
+      const noSpaceLen = rawMd.replace(/\s+/g, '').length;
+      statCharNoSpace.textContent = noSpaceLen.toLocaleString();
+      statGenko.textContent = (noSpaceLen / 400).toFixed(1);
+      statChapterCount.textContent = chapterMatches.length;
+      statRubyCount.textContent = rubyMatches.length;
+      inputLineCount.textContent = rawMd.split('\n').length.toLocaleString() + ' 行';
+
+      // --- PIXIV CONVERSION ---
+      let pixBody = cleanBody.replace(rubyRegex, '[[rb:$1 > $2]]');
+      let chIdx = 0;
+      const hasTextBeforeFirstChapter = (() => {
+        const firstMatch = pixBody.match(/^##\s+(.+)$/m);
+        if (!firstMatch) return false;
+        return pixBody.substring(0, firstMatch.index).trim().length > 0;
+      })();
+
+      pixBody = pixBody.replace(/^##\s+(.+)$/gm, (m, chName) => {
+        chIdx++;
+        chName = chName.trim();
+        if (chIdx === 1 && !hasTextBeforeFirstChapter && !optPixivFirstNewpage.checked) {
+          return `[chapter:${chName}]`;
+        }
+        return `[newpage]\n[chapter:${chName}]`;
+      });
+
+      // Cleanup
+      pixBody = cleanText(pixBody);
+
+      let finalPixParts = [];
+      if (optPixivTitleInBody.checked && title) finalPixParts.push(title);
+      if (optPixivCaptionInBody.checked && caption) finalPixParts.push(caption);
+      finalPixParts.push(pixBody);
+      const finalPixBody = finalPixParts.filter(Boolean).join('\n\n').trim();
+
+      const pixivFull = [
+        title ? `【タイトル】\n${title}` : '',
+        caption ? `【キャプション】\n${caption}` : '',
+        `【本文】\n${finalPixBody}`
+      ].filter(Boolean).join('\n\n');
+
+      currentResults.pixiv = { title, caption, body: finalPixBody, full: pixivFull };
+
+      // --- HAMELN CONVERSION ---
+      let hamBody = cleanBody.replace(rubyRegex, '|$1《$2》');
+      hamBody = hamBody.replace(/^##\s+(.+)$/gm, (m, chName) => {
+        return `《big》《b》■${chName.trim()}《/b》《/big》《hr》`;
+      });
+
+      if (optHamelnBold.checked) {
+        hamBody = hamBody.replace(/\*\*(.+?)\*\*/g, '《b》$1《/b》');
+      }
+      hamBody = hamBody.replace(/^(?:[-*_]\s*){3,}$/gm, '《hr》');
+
+      hamBody = cleanText(hamBody);
+
+      let finalHamParts = [];
+      if (optHamelnTitleInBody.checked && title) finalHamParts.push(`《big》《b》${title}《/b》《/big》《hr》`);
+      if (optHamelnCaptionInBody.checked && caption) finalHamParts.push(`《b》【あらすじ】《/b》\n${caption}\n《hr》`);
+      finalHamParts.push(hamBody);
+      const finalHamBody = finalHamParts.filter(Boolean).join('\n\n').trim();
+
+      const hamelnFull = [
+        title ? `【タイトル】\n${title}` : '',
+        caption ? `【あらすじ / 前書き】\n${caption}` : '',
+        `【本文】\n${finalHamBody}`
+      ].filter(Boolean).join('\n\n');
+
+      currentResults.hameln = { title, caption, body: finalHamBody, full: hamelnFull };
+
+      // Update UI
+      updateOutputView();
+    }
+
+    function cleanText(text) {
+      let lines = text.split('\n');
+      if (optTrimSpaces.checked) {
+        lines = lines.map(l => l.replace(/[\t ]+$/, ''));
+      }
+      let cleaned = lines.join('\n');
+      if (optCompressLines.checked) {
+        cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+      }
+      return cleaned.trim();
+    }
+
+    function updateOutputView() {
+      const activeData = currentResults[currentTab] || currentResults.pixiv;
+      dispTitle.textContent = activeData.title || '（タイトルなし）';
+      dispCaption.textContent = activeData.caption || '（キャプションなし）';
+      captionLabel.textContent = currentTab === 'hameln' ? 'あらすじ / 前書き (```)' : 'キャプション (```)';
+
+      if (currentTab === 'preview') {
+        outputWrapperText.style.display = 'none';
+        outputWrapperPreview.style.display = 'block';
+        renderPreview();
+        outputCharCount.textContent = `${activeData.body.length.toLocaleString()} 文字`;
+      } else {
+        outputWrapperText.style.display = 'flex';
+        outputWrapperPreview.style.display = 'none';
+        outputText.value = activeData.body;
+        outputCharCount.textContent = `${activeData.body.length.toLocaleString()} 文字 (本文)`;
+      }
+
+      // Button styles
+      const isHameln = currentTab === 'hameln';
+      const copyBtns = [btnCopyTitle, btnCopyCaption, btnCopyBody];
+      copyBtns.forEach(btn => {
+        btn.classList.toggle('btn-copy-pixiv', !isHameln);
+        btn.classList.toggle('btn-copy-hameln', isHameln);
+      });
+    }
+
+    function renderPreview() {
+      const rawMd = inputMd.value;
+      const { title, caption, body } = parseMarkdown(rawMd);
+
+      let html = '';
+      if (title) {
+        html += `<h1 style="font-size:22px; margin-bottom:16px; border-bottom:2px solid var(--border); padding-bottom:8px;">${escapeHtml(title)}</h1>`;
+      }
+      if (caption) {
+        html += `<div style="background:var(--bg-card); border-left:4px solid var(--accent); padding:10px 14px; margin-bottom:20px; font-size:14px; border-radius:4px;">${escapeHtml(caption).replace(/\n/g, '<br>')}</div>`;
+      }
+
+      // Convert rubies to HTML <ruby>
+      let bodyHtml = escapeHtml(body);
+      bodyHtml = bodyHtml.replace(/&lt;ruby&gt;(?:&lt;rb&gt;)?([\s\S]+?)(?:&lt;\/rb&gt;)?(?:&lt;rp&gt;[\s\S]*?&lt;\/rp&gt;)?&lt;rt&gt;([\s\S]+?)&lt;\/rt&gt;(?:&lt;rp&gt;[\s\S]*?&lt;\/rp&gt;)?&lt;\/ruby&gt;/g, '<ruby><rb>$1</rb><rt>$2</rt></ruby>');
+
+      // Convert chapters
+      bodyHtml = bodyHtml.replace(/^##\s+(.+)$/gm, (m, ch) => {
+        return `<div class="preview-chapter"><div class="pixiv-page-break">📄 [改ページ]</div><div class="pixiv-chapter-tag">■ ${ch}</div><hr></div>`;
+      });
+
+      // Line breaks
+      bodyHtml = bodyHtml.replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>');
+      html += bodyHtml;
+
+      outputWrapperPreview.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;'
+        }[tag] || tag)
+      );
+    }
+
+    // --- Clipboard & Feedback ---
+    function copyToClipboard(text, msg = 'コピーしました！') {
+      if (!text) {
+        showToast('コピーする内容がありません');
+        return;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(msg);
+      }).catch(() => {
+        // Fallback for older environments
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast(msg);
+      });
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // --- Tabs Switcher ---
+    tabPixiv.addEventListener('click', () => {
+      currentTab = 'pixiv';
+      tabPixiv.className = 'tab-btn active-pixiv';
+      tabHameln.className = 'tab-btn';
+      tabPreview.className = 'tab-btn';
+      updateOutputView();
+    });
+
+    tabHameln.addEventListener('click', () => {
+      currentTab = 'hameln';
+      tabPixiv.className = 'tab-btn';
+      tabHameln.className = 'tab-btn active-hameln';
+      tabPreview.className = 'tab-btn';
+      updateOutputView();
+    });
+
+    tabPreview.addEventListener('click', () => {
+      currentTab = 'preview';
+      tabPixiv.className = 'tab-btn';
+      tabHameln.className = 'tab-btn';
+      tabPreview.className = 'tab-btn active-preview';
+      updateOutputView();
+    });
+
+    // --- Copy Buttons ---
+    btnCopyTitle.addEventListener('click', () => {
+      const activeData = currentResults[currentTab] || currentResults.pixiv;
+      copyToClipboard(activeData.title, 'タイトルをコピーしました！');
+    });
+
+    btnCopyCaption.addEventListener('click', () => {
+      const activeData = currentResults[currentTab] || currentResults.pixiv;
+      copyToClipboard(activeData.caption, 'キャプションをコピーしました！');
+    });
+
+    btnCopyBody.addEventListener('click', () => {
+      const activeData = currentResults[currentTab] || currentResults.pixiv;
+      copyToClipboard(activeData.body, '本文をコピーしました！');
+    });
+
+    btnCopyAll.addEventListener('click', () => {
+      const activeData = currentResults[currentTab] || currentResults.pixiv;
+      copyToClipboard(activeData.full, '全テキストをコピーしました！');
+    });
+
+    btnCopyRaw.addEventListener('click', () => {
+      copyToClipboard(inputMd.value, 'Markdown原稿をコピーしました！');
+    });
+
+    // --- Download as .txt ---
+    btnDownload.addEventListener('click', () => {
+      const activeData = currentResults[currentTab] || currentResults.pixiv;
+      const textToSave = activeData.body;
+      const title = activeData.title || 'novel';
+      const filename = `${title}_${currentTab}.txt`.replace(/[\\/:*?"<>|]/g, '_');
+
+      const blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast(`${filename} をダウンロードしました`);
+    });
+
+    // --- Event Listeners ---
+    inputMd.addEventListener('input', convertNovel);
+
+    [
+      optPixivFirstNewpage, optPixivTitleInBody, optPixivCaptionInBody,
+      optHamelnBold, optHamelnTitleInBody, optHamelnCaptionInBody,
+      optTrimSpaces, optCompressLines
+    ].forEach(chk => chk.addEventListener('change', convertNovel));
+
+    btnClear.addEventListener('click', () => {
+      inputMd.value = '';
+      convertNovel();
+      showToast('クリアしました');
+    });
+
+    btnToggleOptions.addEventListener('click', () => {
+      optionsBox.classList.toggle('open');
+    });
+
+    // Theme Switch
+    btnTheme.addEventListener('click', () => {
+      const isLight = document.body.getAttribute('data-theme') === 'light';
+      document.body.setAttribute('data-theme', isLight ? '' : 'light');
+    });
+
+    // --- Drag and Drop ---
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        readFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        readFile(e.target.files[0]);
+      }
+    });
+
+    function readFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        inputMd.value = e.target.result;
+        convertNovel();
+        showToast(`${file.name} を読み込みました`);
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+
+    // --- Sample Novel Loader ---
+    btnLoadSample.addEventListener('click', () => {
+      if (sampleNovelText) {
+        inputMd.value = sampleNovelText;
+        convertNovel();
+        showToast('サンプル小説を読み込みました');
+      } else {
+        // Fallback demo snippet
+        inputMd.value = `# 異世界転生したら最強のチート猫だった件 ～魔王城でまったり昼寝生活～
+
+\`\`\`
+トラックに轢かれて目覚めたら、なぜか魔王城に住み着く白猫に転生していた！？
+モフモフの身体と規格外のチート魔法を武器に、今日も魔王の膝の上で二度寝を決める――！
+笑いとモフモフが織りなす異世界スローライフファンタジー。
+\`\`\`
+
+## プロローグ：目覚めたら猫でした
+
+暖かい日差しと、心地よい絨毯の感触。  
+ふと目を覚ますと、視界がいつもよりずっと低い。  
+
+「にゃーん？」  
+
+思わず声を出してみたら、自分の口から出たのは情けない猫の鳴き声だった。  
+見下ろせば、ふわふわの白い前足。肉球は綺麗なピンク色をしている。  
+
+（……えっ、俺、猫になってる！？）  
+
+確か、深夜のコンビニ帰りに居眠り運転のトラックから小学生をかばって――そこまでは覚えている。  
+どうやら絵に描いたような<ruby><rb>異世界転生</rb><rt>いせかいてんせい</rt></ruby>を果たしてしまったらしい。  
+
+## 第1章：魔王様との出会い
+
+「おい、こんな所に猫が迷い込んでいるぞ」  
+
+部屋の重厚な扉が開き、漆黒のローブをまとった筋骨隆々の男が入ってきた。  
+頭には禍々しい角、背中には黒い翼。どう見ても<ruby><rb>魔王</rb><rt>まおう</rt></ruby>その人である。  
+
+普通の転生者なら腰を抜かすところだろうが、今の俺には抗えない本能があった。  
+男の手から漂う、**干し肉の極上の香り**。  
+
+「グルニャァ……（飯くれ）」  
+
+俺はすり寄って頭をごつんと押し付けた。  
+魔王は目を見張り、次の瞬間には相好を崩していた。  
+
+「ぐっ……な、なんと愛らしい毛並みだ……！ 今日から貴様は我が城の<ruby><rb>最高名誉顧問猫</rb><rt>さいこうめいよこもんねこ</rt></ruby>だ！」  
+
+世界を滅ぼす魔王が、あっさりとモフモフの軍門に降った瞬間だった。  
+
+## 第2章：伝説の魔力、炸裂？
+
+平和な昼寝ライフが始まったと思いきや、城に招かれざる客がやってきた。  
+教会の放った<ruby><rb>勇者パーティー</rb><rt>ゆうしゃパーティー</rt></ruby>だ。  
+
+「魔王、覚悟――って、なんだあの猫は？」  
+「ふっ、油断するな。あれは魔王が飼う凶悪な魔獣に違いない！」  
+
+昼寝を邪魔されて機嫌を損ねた俺は、軽くあくびをしながら前足をひと振りした。  
+
+「ふにゃー（うるさい、あっち行け）」  
+
+放たれたのは、猫パンチの軌跡を描く<ruby><rb>次元断裂衝撃波</rb><rt>ディメンション・スラッシュ</rt></ruby>。  
+城の訓練場ごと勇者たちの武器が遥か彼方へと吹き飛んでいく。  
+
+「「「バ、バケモノだーーー！！」」」  
+
+脱兎のごとく逃げ出す勇者たちを見送りながら、俺は再び丸くなって目を閉じた。  
+今日も魔王城は平和である。
+`;
+        convertNovel();
+        showToast('サンプル小説を読み込みました');
+      }
+    });
+
+    // Initial run
+    convertNovel();
+  </script>
+</body>
+</html>

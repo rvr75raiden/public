@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>縦書文庫 - Vertical Novel Reader</title>
+
+  <!-- OGP & X (Twitter) Card Settings -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="縦書文庫">
+  <meta property="og:title" content="縦書文庫 - Web小説ビューア">
+  <meta name="twitter:title" content="縦書文庫 - Web小説ビューア">
+  <meta property="og:description" content="Gistから読み込んだテキストを、読みやすい縦書き・横書きで快適に読めるカスタムビューアです。音声朗読・ルビ表示対応。">
+  <meta name="twitter:description" content="Gistから読み込んだテキストを、読みやすい縦書き・横書きで快適に読めるカスタムビューアです。音声朗読・ルビ表示対応。">
+  <!-- ※ X/Twitterでのサムネイル表示には公開サイトのフルURL (例: https://xxx.netlify.app/ogp_image.jpg) を指定してください -->
+  <meta property="og:image" content="ogp_image.jpg">
+  <meta name="twitter:image" content="ogp_image.jpg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Shippori+Mincho:wght@400;600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body data-theme="dark" class="selection:bg-amber-700 selection:text-white">
+
+  <!-- Background image layer (underneath content) -->
+  <div id="bg-image-layer"></div>
+
+  <header
+    class="flex-shrink-0 z-30 flex items-center justify-between px-2.5 sm:px-6 py-1.5 sm:py-3 border-b transition-all duration-300 ui-panel w-full">
+    <div class="flex items-center space-x-2 sm:space-x-3 min-w-0 mr-1 sm:mr-2 flex-shrink">
+      <span class="hidden sm:inline-block text-xs uppercase tracking-widest px-2 py-0.5 rounded font-mono border flex-shrink-0"
+        style="border-color: var(--border-color); color: var(--accent-color);">縦書文庫</span>
+      <button id="doc-title-btn" type="button"
+        class="flex items-center space-x-1 sm:space-x-1.5 py-1 px-1.5 -mx-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-left max-w-full group"
+        title="目次（見出し一覧）を表示 / 移動">
+        <h1 id="doc-title" class="text-xs sm:text-sm font-semibold truncate max-w-[100px] sm:max-w-[140px] md:max-w-[220px] lg:max-w-md font-sans">サンプル小説</h1>
+        <svg id="doc-title-chevron" class="w-3.5 h-3.5 opacity-50 group-hover:opacity-100 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+      <!-- Table of Contents trigger button -->
+      <button id="toggle-toc-btn"
+        class="p-1.5 sm:px-2 sm:py-1.5 text-xs rounded-lg border border-transparent hover:border-current transition-all flex items-center space-x-1 font-sans"
+        title="目次（見出し一覧）を表示">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 6h16M4 10h16M4 14h10M4 18h7"></path>
+        </svg>
+        <span class="hidden md:inline">目次</span>
+      </button>
+
+      <!-- Writing mode direct toggle button -->
+      <button id="toggle-writing-mode-btn"
+        class="p-1.5 sm:px-2 sm:py-1.5 text-xs rounded-lg border border-transparent hover:border-current transition-all flex items-center space-x-1 font-sans"
+        title="縦書き / 横書きの切替">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h10"></path>
+        </svg>
+        <span id="header-mode-text" class="hidden sm:inline">横書き</span>
+      </button>
+
+      <!-- File upload trigger -->
+      <label
+        class="cursor-pointer p-1.5 sm:px-2 sm:py-1.5 text-xs rounded-lg border border-transparent hover:border-current transition-all flex items-center space-x-1 font-sans"
+        title="テキストファイルを開く (.md / .txt)">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+        </svg>
+        <span class="hidden lg:inline">開く (.md / .txt)</span>
+        <input type="file" id="file-input" accept=".md,.markdown,.txt" class="hidden">
+      </label>
+
+      <!-- Download reader.zip trigger -->
+      <a href="reader.zip" download="reader.zip"
+        class="p-1.5 sm:px-2 sm:py-1.5 text-xs rounded-lg border border-transparent hover:border-current transition-all flex items-center space-x-1 font-sans"
+        title="reader.zip をダウンロード">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        <span class="hidden lg:inline">保存 (.zip)</span>
+      </a>
+
+      <!-- Text-to-Speech (朗読) Controls -->
+      <div class="flex items-center space-x-0.5">
+        <button id="tts-toggle-btn"
+          class="p-1.5 sm:px-2 sm:py-1.5 text-xs rounded-lg border border-transparent hover:border-current transition-all flex items-center space-x-1 font-sans"
+          title="音声読み上げ (再生 / 一時停止)">
+          <svg id="tts-icon" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z">
+            </path>
+          </svg>
+          <span id="tts-btn-text" class="hidden md:inline">朗読</span>
+        </button>
+        <button id="tts-stop-btn"
+          class="p-1.5 rounded-lg border border-transparent hover:border-current transition-all hidden text-red-600 dark:text-red-400 font-sans"
+          title="読み上げを停止">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+            <rect x="6" y="6" width="12" height="12" rx="1.5"></rect>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Clipboard paste background direct button -->
+      <button id="header-paste-bg-btn"
+        class="p-1.5 sm:px-2 sm:py-1.5 text-xs rounded-lg border border-transparent hover:border-current transition-all flex items-center space-x-1 font-sans"
+        title="コピーした画像を背景に貼り付け (クリップボード / Ctrl+V)">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        <span class="hidden lg:inline">背景貼付</span>
+      </button>
+
+      <!-- Settings trigger toggle -->
+      <button id="toggle-settings-btn" class="p-1.5 sm:p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        title="設定">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+          </path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+          </path>
+        </svg>
+      </button>
+
+      <!-- Fullscreen button (モバイルでは非表示) -->
+      <button id="toggle-fullscreen-btn"
+        class="hidden sm:block p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors" title="全画面表示">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Table of Contents (目次) Dropdown Panel -->
+  <div id="toc-panel"
+    class="hidden fixed z-40 w-[calc(100vw-1.5rem)] sm:w-80 max-w-[360px] max-h-[75vh] max-h-[75dvh] overflow-hidden rounded-xl shadow-2xl border ui-panel font-sans transition-all flex flex-col">
+    <div class="flex items-center justify-between px-3.5 py-2.5 border-b flex-shrink-0" style="border-color: var(--border-color);">
+      <div class="flex items-center space-x-2">
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--accent-color);">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h10M4 18h7"></path>
+        </svg>
+        <span class="text-xs font-bold tracking-wider">目次（見出し一覧）</span>
+      </div>
+      <span id="toc-count" class="text-[10px] font-mono opacity-60 px-1.5 py-0.5 rounded border" style="border-color: var(--border-color);">0件</span>
+    </div>
+    <div id="toc-list" class="overflow-y-auto p-1.5 space-y-0.5 flex-1">
+      <!-- 目次項目が動的に挿入される -->
+    </div>
+  </div>
+
+  <div id="settings-panel"
+    class="hidden fixed right-2 sm:right-6 z-40 w-[calc(100vw-1rem)] sm:w-80 max-w-[340px] max-h-[80vh] max-h-[80dvh] overflow-y-auto rounded-xl shadow-xl border p-4 sm:p-5 ui-panel font-sans transition-all text-sm">
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-2 opacity-70">組み方向</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="mode-vertical-btn"
+            class="py-1 px-2 text-xs rounded border border-amber-900/40 font-medium">縦書き</button>
+          <button id="mode-horizontal-btn"
+            class="py-1 px-2 text-xs rounded border border-transparent hover:border-current font-medium">横書き</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-2 opacity-70">テーマ</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button data-theme-set="light"
+            class="theme-btn py-1.5 rounded-lg border text-xs text-center border-amber-900/30 bg-[#faf8f5] text-[#2b2b2b] font-medium">明鏡
+            (白)</button>
+          <button data-theme-set="sepia"
+            class="theme-btn py-1.5 rounded-lg border text-xs text-center border-amber-900/30 bg-[#f4ecd8] text-[#3e3223] font-medium">羊皮紙</button>
+          <button data-theme-set="dark"
+            class="theme-btn py-1.5 rounded-lg border text-xs text-center border-zinc-700 bg-[#1a1a1c] text-[#d8d8d8] font-medium ring-2 ring-amber-700">漆黒</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-xs font-semibold uppercase tracking-wider opacity-70">文字サイズ</label>
+          <span id="font-size-val" class="text-xs font-mono">19px</span>
+        </div>
+        <input type="range" id="font-size-slider" min="14" max="28" value="19" class="w-full accent-amber-800">
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="text-xs font-semibold uppercase tracking-wider opacity-70">行間（字送り）</label>
+          <span id="line-height-val" class="text-xs font-mono">2.1</span>
+        </div>
+        <input type="range" id="line-height-slider" min="1.6" max="2.8" step="0.1" value="2.1"
+          class="w-full accent-amber-800">
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-2 opacity-70">フォント</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="font-shippori"
+            class="py-1 px-2 text-xs rounded border border-amber-900/40 font-serif">しっぽり明朝</button>
+          <button id="font-noto"
+            class="py-1 px-2 text-xs rounded border border-transparent hover:border-current font-serif">Noto
+            Serif</button>
+        </div>
+      </div>
+
+      <!-- Background Image Settings Section -->
+      <div class="pt-3 border-t" style="border-color: var(--border-color);">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-xs font-semibold uppercase tracking-wider opacity-70">背景画像</label>
+          <button id="clear-bg-btn"
+            class="text-[11px] text-red-600 dark:text-red-400 hover:underline hidden">解除</button>
+        </div>
+
+        <div class="space-y-2.5">
+          <!-- Preset Sample Background -->
+          <div>
+            <div class="text-[11px] opacity-70 mb-1.5">サンプル背景</div>
+            <button id="preset-bookcafe-btn" type="button"
+              class="w-full flex items-center justify-between py-1.5 px-3 rounded-lg border border-amber-900/30 hover:border-current hover:bg-black/5 dark:hover:bg-white/10 transition-all text-xs text-left font-sans">
+              <span class="flex items-center space-x-1.5">
+                <span>☕</span>
+                <span class="font-medium">ブックカフェ (bookcafe_min.jpg)</span>
+              </span>
+              <span id="preset-bookcafe-badge" class="text-[10px] px-1.5 py-0.5 rounded border border-current opacity-70">適用</span>
+            </button>
+          </div>
+
+          <!-- Clipboard Paste Background -->
+          <div>
+            <div class="text-[11px] opacity-70 mb-1.5">クリップボードから</div>
+            <button id="panel-paste-bg-btn" type="button"
+              class="w-full flex items-center justify-between py-1.5 px-3 rounded-lg border border-dashed border-amber-900/40 hover:border-current hover:bg-black/5 dark:hover:bg-white/10 transition-all text-xs text-left font-sans">
+              <span class="flex items-center space-x-1.5">
+                <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                <span class="font-medium">コピーした画像を貼る</span>
+              </span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded border border-current opacity-70 font-mono">貼付</span>
+            </button>
+          </div>
+
+          <!-- Custom File Upload -->
+          <div>
+            <div class="text-[11px] opacity-70 mb-1.5">お好みの画像</div>
+            <label
+              class="w-full flex items-center justify-center space-x-1.5 py-1.5 px-3 rounded-lg border border-dashed border-current/30 hover:border-current cursor-pointer transition-colors text-xs text-center font-sans">
+              <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                </path>
+              </svg>
+              <span id="bg-file-label">画像を選択</span>
+              <input type="file" id="bg-image-input" accept="image/*" class="hidden">
+            </label>
+          </div>
+
+          <div id="bg-controls-container" class="hidden space-y-2 pt-1">
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-[11px] opacity-70">濃さ (不透明度)</span>
+                <span id="bg-opacity-val" class="text-xs font-mono">15%</span>
+              </div>
+              <input type="range" id="bg-opacity-slider" min="5" max="45" step="1" value="15"
+                class="w-full accent-amber-800">
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-[11px] opacity-70">ぼかし (可読性)</span>
+                <span id="bg-blur-val" class="text-xs font-mono">1px</span>
+              </div>
+              <input type="range" id="bg-blur-slider" min="0" max="8" step="1" value="1"
+                class="w-full accent-amber-800">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text-to-Speech Settings Section -->
+      <div class="pt-3 border-t" style="border-color: var(--border-color);">
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-2 opacity-70">音声読み上げ</label>
+        <div class="space-y-2.5">
+          <div>
+            <label class="block text-[11px] opacity-70 mb-1">音声モデル (声質)</label>
+            <select id="voice-select"
+              class="w-full text-xs py-1.5 px-2 rounded-lg border bg-transparent font-sans cursor-pointer truncate"
+              style="border-color: var(--border-color); color: var(--text-color);">
+              <option value="" class="bg-[var(--bg-color)]">標準の日本語音声</option>
+            </select>
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[11px] opacity-70">読み上げ速度</span>
+              <span id="tts-rate-val" class="text-xs font-mono">1.0x</span>
+            </div>
+            <input type="range" id="tts-rate-slider" min="0.7" max="1.5" step="0.1" value="1.0"
+              class="w-full accent-amber-800">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-[11px] opacity-70">声の高さ</span>
+              <span id="tts-pitch-val" class="text-xs font-mono">1.0</span>
+            </div>
+            <input type="range" id="tts-pitch-slider" min="0.8" max="1.3" step="0.1" value="1.0"
+              class="w-full accent-amber-800">
+          </div>
+        </div>
+      </div>
+
+      <!-- App Download Section -->
+      <div class="pt-3 border-t flex items-center justify-between" style="border-color: var(--border-color);">
+        <div>
+          <div class="text-xs font-semibold">オフライン配布版</div>
+          <div class="text-[10px] opacity-60">単体で動く HTML 一式</div>
+        </div>
+        <a href="reader.zip" download="reader.zip"
+          class="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border border-current/30 hover:border-current hover:bg-black/5 dark:hover:bg-white/10 transition-all text-xs font-medium">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          <span>reader.zip</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <main id="reader-viewport" class="vertical-container relative z-10">
+    <article id="novel-content" class="novel-content text-[19px] leading-[2.1]">
+      <!-- Content populated by markdown parser -->
+    </article>
+  </main>
+
+  <footer
+    class="flex-shrink-0 z-30 flex items-center justify-between px-3 sm:px-6 py-2 sm:py-2.5 border-t ui-panel text-xs font-sans w-full">
+    <div class="flex items-center space-x-1.5 sm:space-x-2">
+      <!-- Page Navigation -->
+      <button id="page-next-btn"
+        class="px-2.5 sm:px-3 py-1 rounded border border-current/20 hover:bg-black/5 dark:hover:bg-white/10 transition-colors flex items-center space-x-1"
+        title="次の頁へ (←キー)">
+        <span>次頁</span>
+        <kbd id="next-key-hint" class="hidden sm:inline text-[10px] opacity-60">←</kbd>
+      </button>
+      <button id="page-prev-btn"
+        class="px-2.5 sm:px-3 py-1 rounded border border-current/20 hover:bg-black/5 dark:hover:bg-white/10 transition-colors flex items-center space-x-1"
+        title="前の頁へ (→キー)">
+        <span>前頁</span>
+        <kbd id="prev-key-hint" class="hidden sm:inline text-[10px] opacity-60">→</kbd>
+      </button>
+    </div>
+
+    <!-- Progress indicator -->
+    <div class="flex items-center space-x-2 sm:space-x-3">
+      <div class="w-20 sm:w-32 md:w-48 bg-black/10 dark:bg-white/10 h-1.5 rounded-full overflow-hidden">
+        <div id="read-progress" class="h-full bg-amber-700 transition-all duration-200" style="width: 0%;"></div>
+      </div>
+      <span id="progress-percent" class="font-mono text-[11px] w-8 sm:w-10 text-right">0%</span>
+    </div>
+  </footer>
+
+  <div id="drop-zone"
+    class="hidden fixed inset-0 z-50 flex items-center justify-center drop-overlay text-white font-sans transition-all">
+    <div
+      class="p-8 rounded-2xl border-2 border-dashed border-white/60 bg-black/60 flex flex-col items-center space-y-3">
+      <svg class="w-12 h-12 stroke-white animate-bounce" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+      </svg>
+      <p class="text-lg font-semibold">Markdown / Text または画像をドロップ</p>
+      <p class="text-xs text-white/70">.md, .txt は本文として開き、画像ファイルは薄く背景に設定されます</p>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notification -->
+  <div id="toast-notify"
+    class="fixed bottom-14 left-1/2 z-50 max-w-[90vw] px-4 py-2 rounded-full text-xs font-sans shadow-lg border ui-panel flex items-center space-x-2 text-center">
+    <span id="toast-icon">📋</span>
+    <span id="toast-text">画像を背景に設定しました</span>
+  </div>
+
+  <script>
+    // ==========================================
+    // 0. Sample Novel Markdown Content
+    // ==========================================
+    const sampleNovel = `# 縦書文庫の手引き
+
+「……先輩、これって何ですか？　ブラウザなのに、まるで本物の文庫本をめくっているみたいです」
+
+本棚に囲まれた静かな部屋で、後輩の娘が画面を覗き込みながら目を丸くした。
+
+「ああ、これは《《縦書文庫》》さ。Web上のテキストを、日本の伝統的な｜縦組《たてぐみ》で心地よく読むためのWebリーダーだよ」
+
+男は淹れたての珈琲をデスクに置き、キーボードの矢印キーを軽く叩いた。滑らかにページが左へと送られていく。
+
+## 読書のための便利な機能
+
+「ほら、キーボードの［←］や［→］キー、それにマウスホイールでも、文庫本をめくるように軽快にページ送りができるんだ」
+
+「あ、本当だ！　画面下の次頁・前頁ボタンでもめくれますね。……あれ、でも右上のここを押すと――」
+
+「そう。上のボタンや設定パネルから、ワンタッチで｜横組《よこぐみ》にも切り替えられる。スマホや長文の資料を流し読みしたい時は、横書きのほうが便利なこともあるからね」
+
+「それに上のバーに『朗読』ボタンもありますね！　これって……」
+
+「ブラウザの音声合成機能さ。ボタン一つで本文を心地よく読み上げてくれるんだ。ルビの重複読みを防ぐ仕組みが入っているから、漢字とフリガナが二重に読まれる心配もない。設定パネルからお好みの音声モデル（声質）や読み上げ速度も選べるし、途中で一時停止や再開も自由自在だよ」
+
+「わあ、作業しながら耳で聴く読書もできるなんて最高ですね！　それに、文字の横に小さな点……傍点や、漢字の上の｜振仮名《ルビ》もちゃんと再現されています！」
+
+男は満足そうに微笑んだ。
+
+「小説ならではの表現だからね。カクヨムやなろう形式のルビや、二桁の数字――例えば24時間とか15分といった数字も、縦書きの中で綺麗に横並びになるのさ」
+
+「それに、キーワードを目立たせる \`インラインコード\` や、複数行のコードブロックにも対応しているよ。ステータス画面やシステムメッセージ、手紙やあらすじの囲み枠にも便利さ」
+
+\`\`\`markdown
+【機能ステータス】
+読書形式：縦組（縦書き） / 横組（横書き）
+装飾機能：ルビ・傍点・\`code\`・コードブロック
+\`\`\`
+
+---
+
+### お好みの読書環境に仕立てる
+
+「右上の歯車アイコンを開いてごらん。背景色も『明鏡（白）』『羊皮紙（セピア）』『漆黒（ダーク）』から選べるし、フォントや文字サイズ、行間もお好みのままさ」
+
+「さらに背景画像まで設定できるんですね！　設定パネルの『☕ ブックカフェ』を押せば付属のサンプル背景をワンクリックで試せますし、文字が読みやすいように薄さやぼかしも調整できるなんて気が利いてます」
+
+「自分の書いた Markdown やテキストファイル（.md / .txt）を画面にぽんとドロップするだけで、いつでもお気に入りの作品を縦書きで楽しめるよ。画像ファイルを落とせば、そのまま背景にセットされるんだ」
+
+「ネットが繋がらない旅先でも読みたい時はどうするんですか？」
+
+「右上の『保存 (.zip)』ボタンを押せば、このリーダー丸ごとZIPファイルで手に入るよ。解凍してブラウザで開くだけで、完全オフラインで動作するのさ」
+
+「至れり尽くせりですね！　……あ、最後に何かリンクが貼ってありますよ？」
+
+「作者のページさ。気に入ったらぜひ覗いてみてほしいな」
+
+---
+|[Pixiv らいでん](https://www.pixiv.net/users/2035168)`;
+
+    // ==========================================
+    // 1. Utilities (共通ヘルパー関数)
+    // ==========================================
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * ルビ・傍点・リンク・インラインコード等の装飾記法を取り除き、平文テキストを抽出
+     */
+    function stripNovelFormatting(text) {
+      if (!text) return '';
+      return text
+        .replace(/[|｜]([^《\s]+)《[^》]+》/g, '$1') // ｜漢字《かんじ》
+        .replace(/([一-龠々〆ヵヶ]+)《[^》]+》/g, '$1') // 漢字《かんじ》
+        .replace(/《《([^》]+)》》/g, '$1')             // 《《傍点》》
+        .replace(/[|｜]?\[([^\]]+)\]\([^)]+\)/g, '$1')  // [text](url) または |[text](url)
+        .replace(/`([^`\r\n]+)`/g, '$1')                // `code`
+        .replace(/\*\*([^*]+)\*\*/g, '$1')              // **bold**
+        .replace(/\*([^*]+)\*/g, '$1')                  // *italic*
+        .trim();
+    }
+
+    // ==========================================
+    // 2. DOM Elements Cache
+    // ==========================================
+    const DOM = {
+      viewport: document.getElementById('reader-viewport'),
+      novelContainer: document.getElementById('novel-content'),
+      docTitle: document.getElementById('doc-title'),
+      docTitleBtn: document.getElementById('doc-title-btn'),
+      docTitleChevron: document.getElementById('doc-title-chevron'),
+      toggleTocBtn: document.getElementById('toggle-toc-btn'),
+      tocPanel: document.getElementById('toc-panel'),
+      tocListContainer: document.getElementById('toc-list'),
+      tocCountBadge: document.getElementById('toc-count'),
+      fileInput: document.getElementById('file-input'),
+      dropZone: document.getElementById('drop-zone'),
+      readProgress: document.getElementById('read-progress'),
+      progressPercent: document.getElementById('progress-percent'),
+      toggleWritingModeBtn: document.getElementById('toggle-writing-mode-btn'),
+      headerModeText: document.getElementById('header-mode-text'),
+      modeVerticalBtn: document.getElementById('mode-vertical-btn'),
+      modeHorizontalBtn: document.getElementById('mode-horizontal-btn'),
+      nextKeyHint: document.getElementById('next-key-hint'),
+      prevKeyHint: document.getElementById('prev-key-hint'),
+      pageNextBtn: document.getElementById('page-next-btn'),
+      pagePrevBtn: document.getElementById('page-prev-btn'),
+      toggleFullscreenBtn: document.getElementById('toggle-fullscreen-btn'),
+      toggleSettingsBtn: document.getElementById('toggle-settings-btn'),
+      settingsPanel: document.getElementById('settings-panel'),
+      fontSizeSlider: document.getElementById('font-size-slider'),
+      fontSizeVal: document.getElementById('font-size-val'),
+      lineHeightSlider: document.getElementById('line-height-slider'),
+      lineHeightVal: document.getElementById('line-height-val'),
+      fontShippori: document.getElementById('font-shippori'),
+      fontNoto: document.getElementById('font-noto'),
+      themeBtns: document.querySelectorAll('.theme-btn'),
+      bgImageLayer: document.getElementById('bg-image-layer'),
+      bgImageInput: document.getElementById('bg-image-input'),
+      bgFileLabel: document.getElementById('bg-file-label'),
+      bgControlsContainer: document.getElementById('bg-controls-container'),
+      bgOpacitySlider: document.getElementById('bg-opacity-slider'),
+      bgOpacityVal: document.getElementById('bg-opacity-val'),
+      bgBlurSlider: document.getElementById('bg-blur-slider'),
+      bgBlurVal: document.getElementById('bg-blur-val'),
+      clearBgBtn: document.getElementById('clear-bg-btn'),
+      presetBookcafeBtn: document.getElementById('preset-bookcafe-btn'),
+      presetBookcafeBadge: document.getElementById('preset-bookcafe-badge'),
+      headerPasteBgBtn: document.getElementById('header-paste-bg-btn'),
+      panelPasteBgBtn: document.getElementById('panel-paste-bg-btn'),
+      toastNotify: document.getElementById('toast-notify'),
+      toastText: document.getElementById('toast-text'),
+      toastIcon: document.getElementById('toast-icon'),
+      ttsToggleBtn: document.getElementById('tts-toggle-btn'),
+      ttsStopBtn: document.getElementById('tts-stop-btn'),
+      ttsIcon: document.getElementById('tts-icon'),
+      ttsBtnText: document.getElementById('tts-btn-text'),
+      ttsRateSlider: document.getElementById('tts-rate-slider'),
+      ttsRateVal: document.getElementById('tts-rate-val'),
+      ttsPitchSlider: document.getElementById('tts-pitch-slider'),
+      ttsPitchVal: document.getElementById('tts-pitch-val'),
+      voiceSelect: document.getElementById('voice-select')
+    };
+
+    // ==========================================
+    // 3. SettingsManager (設定の永続化と適用)
+    // ==========================================
+    const STORAGE_KEY = 'tategaki_reader_settings';
+
+    const SettingsManager = {
+      defaults: {
+        theme: 'dark',
+        font: 'shippori',
+        fontSize: 19,
+        lineHeight: 2.1,
+        writingMode: 'vertical',
+        bgOpacity: 20,
+        bgBlur: 2,
+        bgPreset: true,
+        ttsRate: 1.0,
+        ttsPitch: 1.0,
+        ttsVoice: ''
+      },
+      current: {},
+
+      load() {
+        this.current = { ...this.defaults };
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            this.current = { ...this.defaults, ...parsed };
+          }
+        } catch (e) {
+          console.warn('設定の読み込みに失敗しました:', e);
+        }
+        return this.current;
+      },
+
+      save(partial = {}) {
+        this.current = { ...this.current, ...partial };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.current));
+        } catch (e) {
+          console.warn('設定の保存に失敗しました:', e);
+        }
+      },
+
+      applyAll() {
+        // テーマ適用
+        this.applyTheme(this.current.theme, false);
+
+        // フォント適用
+        this.applyFont(this.current.font, false);
+
+        // 文字サイズ
+        if (DOM.fontSizeSlider && DOM.fontSizeVal && DOM.novelContainer) {
+          DOM.fontSizeSlider.value = this.current.fontSize;
+          DOM.novelContainer.style.fontSize = `${this.current.fontSize}px`;
+          DOM.fontSizeVal.textContent = `${this.current.fontSize}px`;
+        }
+
+        // 行間
+        if (DOM.lineHeightSlider && DOM.lineHeightVal && DOM.novelContainer) {
+          DOM.lineHeightSlider.value = this.current.lineHeight;
+          DOM.novelContainer.style.lineHeight = this.current.lineHeight;
+          DOM.lineHeightVal.textContent = this.current.lineHeight;
+        }
+
+        // 背景不透明度・ぼかし
+        if (DOM.bgOpacitySlider && DOM.bgOpacityVal && DOM.bgImageLayer) {
+          DOM.bgOpacitySlider.value = this.current.bgOpacity;
+          DOM.bgOpacityVal.textContent = `${this.current.bgOpacity}%`;
+          DOM.bgImageLayer.style.opacity = (this.current.bgOpacity / 100).toString();
+        }
+        if (DOM.bgBlurSlider && DOM.bgBlurVal && DOM.bgImageLayer) {
+          DOM.bgBlurSlider.value = this.current.bgBlur;
+          DOM.bgBlurVal.textContent = `${this.current.bgBlur}px`;
+          DOM.bgImageLayer.style.filter = `blur(${this.current.bgBlur}px)`;
+        }
+
+        // 背景プリセット
+        if (this.current.bgPreset) {
+          BackgroundManager.setImage('bookcafe_min.jpg', 'ブックカフェ', true, false);
+        }
+
+        // TTS速度・ピッチ
+        if (DOM.ttsRateSlider && DOM.ttsRateVal) {
+          DOM.ttsRateSlider.value = this.current.ttsRate;
+          DOM.ttsRateVal.textContent = `${this.current.ttsRate}x`;
+        }
+        if (DOM.ttsPitchSlider && DOM.ttsPitchVal) {
+          DOM.ttsPitchSlider.value = this.current.ttsPitch;
+          DOM.ttsPitchVal.textContent = this.current.ttsPitch;
+        }
+
+        // 組み方向
+        ReaderState.setWritingMode(this.current.writingMode, false);
+      },
+
+      applyTheme(theme, save = true) {
+        document.body.setAttribute('data-theme', theme);
+        DOM.themeBtns.forEach(btn => {
+          if (btn.getAttribute('data-theme-set') === theme) {
+            btn.classList.add('ring-2', 'ring-amber-700');
+          } else {
+            btn.classList.remove('ring-2', 'ring-amber-700');
+          }
+        });
+        if (save) this.save({ theme });
+      },
+
+      applyFont(fontType, save = true) {
+        if (fontType === 'shippori') {
+          document.body.style.fontFamily = "'Shippori Mincho', 'Noto Serif JP', serif";
+          DOM.fontShippori?.classList.add('border-amber-900/40');
+          DOM.fontNoto?.classList.remove('border-amber-900/40');
+        } else {
+          document.body.style.fontFamily = "'Noto Serif JP', serif";
+          DOM.fontNoto?.classList.add('border-amber-900/40');
+          DOM.fontShippori?.classList.remove('border-amber-900/40');
+        }
+        if (save) this.save({ font: fontType });
+      }
+    };
+
+    // ==========================================
+    // 4. PanelManager (設定・目次パネルの排他開閉と外部クリック)
+    // ==========================================
+    const PanelManager = {
+      tocHoverTimeout: null,
+
+      init() {
+        DOM.toggleSettingsBtn?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.toggleSettings();
+        });
+
+        if (DOM.docTitleBtn) {
+          DOM.docTitleBtn.addEventListener('mouseenter', () => this.handleTocMouseEnter(DOM.docTitleBtn));
+          DOM.docTitleBtn.addEventListener('mouseleave', () => this.handleTocMouseLeave());
+          DOM.docTitleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleToc(DOM.docTitleBtn);
+          });
+        }
+
+        if (DOM.toggleTocBtn) {
+          DOM.toggleTocBtn.addEventListener('mouseenter', () => this.handleTocMouseEnter(DOM.toggleTocBtn));
+          DOM.toggleTocBtn.addEventListener('mouseleave', () => this.handleTocMouseLeave());
+          DOM.toggleTocBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleToc(DOM.toggleTocBtn);
+          });
+        }
+
+        if (DOM.tocPanel) {
+          DOM.tocPanel.addEventListener('mouseenter', () => {
+            clearTimeout(this.tocHoverTimeout);
+          });
+          DOM.tocPanel.addEventListener('mouseleave', () => this.handleTocMouseLeave());
+          DOM.tocPanel.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
+        }
+
+        document.addEventListener('click', (e) => {
+          if (DOM.settingsPanel && !DOM.settingsPanel.classList.contains('hidden')) {
+            if (!DOM.settingsPanel.contains(e.target) && !DOM.toggleSettingsBtn?.contains(e.target)) {
+              this.closeSettings();
+            }
+          }
+          if (DOM.tocPanel && !DOM.tocPanel.classList.contains('hidden')) {
+            const inTitle = DOM.docTitleBtn && DOM.docTitleBtn.contains(e.target);
+            const inToggle = DOM.toggleTocBtn && DOM.toggleTocBtn.contains(e.target);
+            if (!DOM.tocPanel.contains(e.target) && !inTitle && !inToggle) {
+              this.closeToc();
+            }
+          }
+        });
+      },
+
+      toggleSettings() {
+        this.closeToc();
+        DOM.settingsPanel?.classList.toggle('hidden');
+      },
+
+      closeSettings() {
+        DOM.settingsPanel?.classList.add('hidden');
+      },
+
+      openToc(triggerBtn) {
+        if (!DOM.tocPanel) return;
+        this.closeSettings();
+
+        if (triggerBtn === DOM.toggleTocBtn) {
+          DOM.tocPanel.style.left = 'auto';
+          DOM.tocPanel.style.right = window.innerWidth >= 640 ? '24px' : '8px';
+        } else {
+          DOM.tocPanel.style.right = 'auto';
+          DOM.tocPanel.style.left = window.innerWidth >= 640 ? '24px' : '10px';
+        }
+
+        DOM.tocPanel.classList.remove('hidden');
+        if (DOM.docTitleChevron) DOM.docTitleChevron.classList.add('rotate-180');
+      },
+
+      closeToc() {
+        if (!DOM.tocPanel) return;
+        DOM.tocPanel.classList.add('hidden');
+        if (DOM.docTitleChevron) DOM.docTitleChevron.classList.remove('rotate-180');
+      },
+
+      toggleToc(triggerBtn) {
+        if (!DOM.tocPanel) return;
+        if (DOM.tocPanel.classList.contains('hidden')) {
+          this.openToc(triggerBtn);
+        } else {
+          this.closeToc();
+        }
+      },
+
+      handleTocMouseEnter(triggerBtn) {
+        if (window.matchMedia('(hover: hover)').matches) {
+          clearTimeout(this.tocHoverTimeout);
+          this.openToc(triggerBtn);
+        }
+      },
+
+      handleTocMouseLeave() {
+        if (window.matchMedia('(hover: hover)').matches) {
+          clearTimeout(this.tocHoverTimeout);
+          this.tocHoverTimeout = setTimeout(() => {
+            this.closeToc();
+          }, 280);
+        }
+      }
+    };
+
+    // ==========================================
+    // 5. ReaderState (組み方向・進捗・ページ送り・キー操作)
+    // ==========================================
+    const ReaderState = {
+      writingMode: 'vertical',
+
+      init() {
+        DOM.viewport?.addEventListener('scroll', () => this.updateProgress(), { passive: true });
+        DOM.pageNextBtn?.addEventListener('click', () => this.turnPage(true));
+        DOM.pagePrevBtn?.addEventListener('click', () => this.turnPage(false));
+
+        DOM.toggleWritingModeBtn?.addEventListener('click', () => {
+          this.setWritingMode(this.writingMode === 'vertical' ? 'horizontal' : 'vertical');
+        });
+        DOM.modeVerticalBtn?.addEventListener('click', () => this.setWritingMode('vertical'));
+        DOM.modeHorizontalBtn?.addEventListener('click', () => this.setWritingMode('horizontal'));
+
+        // マウスホイール：縦組時の垂直スクロールを水平スクロールに変換
+        DOM.viewport?.addEventListener('wheel', (e) => {
+          if (this.writingMode === 'vertical') {
+            if (e.deltaY !== 0 && e.deltaX === 0) {
+              DOM.viewport.scrollLeft += (e.deltaY > 0 ? -240 : 240);
+              e.preventDefault();
+            }
+          }
+        }, { passive: false });
+
+        // キーボード操作
+        window.addEventListener('keydown', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+          if (this.writingMode === 'vertical') {
+            if (e.key === 'ArrowLeft') {
+              this.turnPage(true);
+              e.preventDefault();
+            } else if (e.key === 'ArrowRight') {
+              this.turnPage(false);
+              e.preventDefault();
+            }
+          } else {
+            if (e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
+              this.turnPage(true);
+              e.preventDefault();
+            } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) {
+              this.turnPage(false);
+              e.preventDefault();
+            } else if (e.key === 'ArrowRight') {
+              this.turnPage(true);
+              e.preventDefault();
+            } else if (e.key === 'ArrowLeft') {
+              this.turnPage(false);
+              e.preventDefault();
+            }
+          }
+        });
+
+        // 全画面トグル
+        DOM.toggleFullscreenBtn?.addEventListener('click', () => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => { });
+          } else {
+            document.exitFullscreen().catch(() => { });
+          }
+        });
+      },
+
+      getProgressRatio() {
+        if (!DOM.viewport) return 0;
+        if (this.writingMode === 'horizontal') {
+          const maxScroll = DOM.viewport.scrollHeight - DOM.viewport.clientHeight;
+          return maxScroll > 0 ? Math.min(1, Math.max(0, DOM.viewport.scrollTop / maxScroll)) : 0;
+        } else {
+          const maxScroll = DOM.viewport.scrollWidth - DOM.viewport.clientWidth;
+          return maxScroll > 0 ? Math.min(1, Math.max(0, Math.abs(DOM.viewport.scrollLeft) / maxScroll)) : 0;
+        }
+      },
+
+      updateProgress() {
+        const ratio = this.getProgressRatio();
+        const percentage = Math.round(ratio * 100);
+        if (DOM.readProgress) DOM.readProgress.style.width = `${percentage}%`;
+        if (DOM.progressPercent) DOM.progressPercent.textContent = `${percentage}%`;
+      },
+
+      setWritingMode(mode, save = true) {
+        if (this.writingMode === mode && document.body.getAttribute('data-writing-mode') === mode) return;
+        const ratio = this.getProgressRatio();
+        this.writingMode = mode;
+        document.body.setAttribute('data-writing-mode', mode);
+
+        if (mode === 'horizontal') {
+          if (DOM.headerModeText) DOM.headerModeText.textContent = '縦書き';
+          DOM.modeVerticalBtn?.classList.remove('border-amber-900/40');
+          DOM.modeVerticalBtn?.classList.add('border-transparent');
+          DOM.modeHorizontalBtn?.classList.add('border-amber-900/40');
+          DOM.modeHorizontalBtn?.classList.remove('border-transparent');
+          if (DOM.nextKeyHint) DOM.nextKeyHint.textContent = '↓';
+          if (DOM.prevKeyHint) DOM.prevKeyHint.textContent = '↑';
+          if (DOM.pageNextBtn) DOM.pageNextBtn.title = '次の頁へ (↓キー / PageDown)';
+          if (DOM.pagePrevBtn) DOM.pagePrevBtn.title = '前の頁へ (↑キー / PageUp)';
+        } else {
+          if (DOM.headerModeText) DOM.headerModeText.textContent = '横書き';
+          DOM.modeHorizontalBtn?.classList.remove('border-amber-900/40');
+          DOM.modeHorizontalBtn?.classList.add('border-transparent');
+          DOM.modeVerticalBtn?.classList.add('border-amber-900/40');
+          DOM.modeVerticalBtn?.classList.remove('border-transparent');
+          if (DOM.nextKeyHint) DOM.nextKeyHint.textContent = '←';
+          if (DOM.prevKeyHint) DOM.prevKeyHint.textContent = '→';
+          if (DOM.pageNextBtn) DOM.pageNextBtn.title = '次の頁へ (←キー)';
+          if (DOM.pagePrevBtn) DOM.pagePrevBtn.title = '前の頁へ (→キー)';
+        }
+
+        if (save) SettingsManager.save({ writingMode: mode });
+
+        requestAnimationFrame(() => {
+          if (!DOM.viewport) return;
+          if (mode === 'horizontal') {
+            const maxScroll = DOM.viewport.scrollHeight - DOM.viewport.clientHeight;
+            DOM.viewport.scrollTop = maxScroll > 0 ? maxScroll * ratio : 0;
+          } else {
+            const maxScroll = DOM.viewport.scrollWidth - DOM.viewport.clientWidth;
+            DOM.viewport.scrollLeft = maxScroll > 0 ? -maxScroll * ratio : 0;
+          }
+          this.updateProgress();
+        });
+      },
+
+      turnPage(forward = true) {
+        if (!DOM.viewport) return;
+        if (this.writingMode === 'horizontal') {
+          const pageHeight = DOM.viewport.clientHeight * 0.85;
+          const delta = forward ? pageHeight : -pageHeight;
+          DOM.viewport.scrollBy({ top: delta, behavior: 'smooth' });
+        } else {
+          const pageWidth = DOM.viewport.clientWidth * 0.85;
+          const delta = forward ? -pageWidth : pageWidth;
+          DOM.viewport.scrollBy({ left: delta, behavior: 'smooth' });
+        }
+      }
+    };
+
+    // ==========================================
+    // 6. NovelParser (小説Markdown解析・ルビ・傍点・コードブロック)
+    // ==========================================
+    const NovelParser = {
+      tocList: [],
+
+      parse(md) {
+        const lines = md.split(/\r?\n/);
+        const htmlOutput = [];
+        let inParagraph = false;
+        let inCodeBlock = false;
+        let codeBlockLines = [];
+        let codeBlockLang = '';
+        this.tocList = [];
+        let headingIndex = 0;
+
+        lines.forEach((rawLine) => {
+          const codeFenceMatch = rawLine.trim().match(/^```(\w+)?$/);
+          if (codeFenceMatch) {
+            if (inCodeBlock) {
+              const rawCode = codeBlockLines.join('\n');
+              const safeCode = escapeHtml(rawCode);
+              const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : '';
+              htmlOutput.push(`<pre class="novel-code-block"><code${langClass}>${safeCode}</code></pre>`);
+              inCodeBlock = false;
+              codeBlockLines = [];
+              codeBlockLang = '';
+            } else {
+              if (inParagraph) {
+                htmlOutput.push('</p>');
+                inParagraph = false;
+              }
+              inCodeBlock = true;
+              codeBlockLang = codeFenceMatch[1] || '';
+              codeBlockLines = [];
+            }
+            return;
+          }
+
+          if (inCodeBlock) {
+            codeBlockLines.push(rawLine);
+            return;
+          }
+
+          let line = rawLine.trim();
+
+          if (!line) {
+            if (inParagraph) {
+              htmlOutput.push('</p>');
+              inParagraph = false;
+            }
+            return;
+          }
+
+          if (/^[-*_]{3,}$/.test(line)) {
+            if (inParagraph) { htmlOutput.push('</p>'); inParagraph = false; }
+            htmlOutput.push('<hr>');
+            return;
+          }
+
+          // 見出し (# H1, ## H2, ### H3)
+          const h1Match = line.match(/^#\s+(.*)$/);
+          const h2Match = line.match(/^##\s+(.*)$/);
+          const h3Match = line.match(/^###\s+(.*)$/);
+
+          if (h1Match || h2Match || h3Match) {
+            if (inParagraph) { htmlOutput.push('</p>'); inParagraph = false; }
+            const titleText = (h1Match || h2Match || h3Match)[1].trim();
+            const level = h1Match ? 1 : h2Match ? 2 : 3;
+            const tag = `h${level}`;
+            const headingId = `novel-heading-${headingIndex++}`;
+            const plainTitle = stripNovelFormatting(titleText);
+
+            this.tocList.push({
+              id: headingId,
+              level: level,
+              title: plainTitle || `見出し ${headingIndex}`
+            });
+
+            htmlOutput.push(`<${tag} id="${headingId}" class="novel-heading novel-heading-${level}">${this.formatInline(titleText)}</${tag}>`);
+            return;
+          }
+
+          const formatted = this.formatInline(line);
+          const isDialogue = /^[「『（【]/.test(line) || /^[|｜]?\[/.test(line);
+
+          if (!inParagraph) {
+            htmlOutput.push(`<p class="${isDialogue ? 'no-indent' : ''}">${formatted}`);
+            inParagraph = true;
+          } else {
+            htmlOutput.push(`<br>${formatted}`);
+          }
+        });
+
+        if (inCodeBlock) {
+          const rawCode = codeBlockLines.join('\n');
+          const safeCode = escapeHtml(rawCode);
+          const langClass = codeBlockLang ? ` class="language-${escapeHtml(codeBlockLang)}"` : '';
+          htmlOutput.push(`<pre class="novel-code-block"><code${langClass}>${safeCode}</code></pre>`);
+        }
+
+        if (inParagraph) {
+          htmlOutput.push('</p>');
+        }
+
+        return htmlOutput.join('');
+      },
+
+      formatInline(str) {
+        let res = str;
+
+        // 0-a. インラインコード一時退避
+        const inlineCodes = [];
+        res = res.replace(/`([^`\r\n]+)`/g, (match, codeText) => {
+          const placeholder = `__NOVEL_INLINE_CODE_${inlineCodes.length}__`;
+          inlineCodes.push(codeText);
+          return placeholder;
+        });
+
+        // 0-b. Markdownリンク一時退避
+        const links = [];
+        res = res.replace(/[|｜]?\[([^\]]+)\]\(([^)\s]+)\)/g, (match, text, url) => {
+          const placeholder = `__NOVEL_LINK_${links.length}__`;
+          links.push({ text, url });
+          return placeholder;
+        });
+
+        // 1. 傍点: 《《文字列》》
+        res = res.replace(/《《([^》]+)》》/g, '<span class="bouten">$1</span>');
+
+        // 2. 明示的ルビ: ｜漢字《かんじ》
+        res = res.replace(/[｜|]([^《\s]+)《([^》]+)》/g, '<ruby>$1<rt>$2</rt></ruby>');
+
+        // 3. 漢字ルビ: 漢字《かんじ》
+        res = res.replace(/([一-龠々〆ヵヶ]+)《([^》]+)》/g, '<ruby>$1<rt>$2</rt></ruby>');
+
+        // 4. 縦中横（2桁以内の数字）
+        res = res.replace(/\b(\d{1,2})\b/g, '<span class="tcy">$1</span>');
+
+        // 5. 太字・斜体
+        res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        res = res.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+        // 6. リンク復元
+        links.forEach((item, index) => {
+          const safeUrl = item.url.replace(/"/g, '&quot;');
+          const linkHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="novel-link" title="${safeUrl}">${item.text}</a>`;
+          res = res.replace(`__NOVEL_LINK_${index}__`, linkHtml);
+        });
+
+        // 7. インラインコード復元
+        inlineCodes.forEach((codeText, index) => {
+          const safeCode = escapeHtml(codeText);
+          const codeHtml = `<code class="novel-inline-code">${safeCode}</code>`;
+          res = res.replace(`__NOVEL_INLINE_CODE_${index}__`, codeHtml);
+        });
+
+        return res;
+      }
+    };
+
+    // ==========================================
+    // 7. TocManager (目次レンダリング・見出しスクロール＆強調)
+    // ==========================================
+    const TocManager = {
+      render(tocList) {
+        if (!DOM.tocListContainer) return;
+        DOM.tocListContainer.innerHTML = '';
+
+        if (!tocList || tocList.length === 0) {
+          if (DOM.tocCountBadge) DOM.tocCountBadge.textContent = '0件';
+          DOM.tocListContainer.innerHTML = `
+            <div class="py-6 px-4 text-center text-xs opacity-60 font-sans space-y-1">
+              <p>見出し（#）が見つかりません</p>
+              <p class="text-[10px] opacity-75">原稿内に # や ## で見出しを記述すると目次が作成されます</p>
+            </div>
+          `;
+          return;
+        }
+
+        if (DOM.tocCountBadge) DOM.tocCountBadge.textContent = `${tocList.length}件`;
+
+        tocList.forEach((item) => {
+          const itemBtn = document.createElement('button');
+          itemBtn.type = 'button';
+          itemBtn.className = `w-full text-left py-2 px-3 rounded-lg transition-all flex items-center justify-between group hover:bg-black/5 dark:hover:bg-white/10 ${
+            item.level === 1 ? 'font-bold text-xs sm:text-sm pt-2.5' :
+            item.level === 2 ? 'font-medium text-xs pl-5 opacity-90' :
+            'text-[11px] pl-8 opacity-80'
+          }`;
+
+          const levelBadge = item.level === 1
+            ? '<span class="w-1.5 h-1.5 rounded-full bg-amber-700 mr-2 flex-shrink-0"></span>'
+            : item.level === 2
+            ? '<span class="w-1 h-1 rounded-full bg-current opacity-50 mr-2 flex-shrink-0"></span>'
+            : '<span class="w-1 h-1 rounded-none border-l border-b border-current opacity-40 mr-2 flex-shrink-0"></span>';
+
+          itemBtn.innerHTML = `
+            <div class="flex items-center min-w-0 pr-2">
+              ${levelBadge}
+              <span class="truncate">${escapeHtml(item.title)}</span>
+            </div>
+            <span class="text-[10px] opacity-40 font-mono group-hover:opacity-80 flex-shrink-0 transition-opacity">H${item.level}</span>
+          `;
+
+          itemBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.scrollToHeading(item.id);
+          });
+
+          DOM.tocListContainer.appendChild(itemBtn);
+        });
+      },
+
+      scrollToHeading(headingId) {
+        const headingEl = document.getElementById(headingId);
+        if (!headingEl || !DOM.viewport) return;
+
+        PanelManager.closeToc();
+
+        if (ReaderState.writingMode === 'horizontal') {
+          const elRect = headingEl.getBoundingClientRect();
+          const vpRect = DOM.viewport.getBoundingClientRect();
+          const deltaY = elRect.top - (vpRect.top + 24);
+          DOM.viewport.scrollBy({ top: deltaY, behavior: 'smooth' });
+        } else {
+          const elRect = headingEl.getBoundingClientRect();
+          const vpRect = DOM.viewport.getBoundingClientRect();
+          const deltaX = elRect.right - (vpRect.right - 44);
+          DOM.viewport.scrollBy({ left: deltaX, behavior: 'smooth' });
+        }
+
+        headingEl.classList.remove('heading-highlight');
+        void headingEl.offsetWidth; // reflow
+        headingEl.classList.add('heading-highlight');
+        setTimeout(() => {
+          headingEl.classList.remove('heading-highlight');
+        }, 1600);
+      }
+    };
+
+    // ==========================================
+    // 8. TTSManager (朗読音声合成・ルビ重複防止・文単位分割)
+    // ==========================================
+    const TTSManager = {
+      synth: ('speechSynthesis' in window) ? window.speechSynthesis : null,
+      state: 'stopped', // 'stopped' | 'playing' | 'paused'
+      sentences: [],
+      currentIndex: 0,
+      currentUtterance: null,
+      availableVoices: [],
+      selectedVoiceUri: '',
+
+      init() {
+        if (!this.synth) return;
+
+        this.populateVoiceList();
+        if (this.synth.onvoiceschanged !== undefined) {
+          this.synth.onvoiceschanged = () => this.populateVoiceList();
+        }
+
+        DOM.voiceSelect?.addEventListener('change', (e) => {
+          this.selectedVoiceUri = e.target.value;
+          SettingsManager.save({ ttsVoice: this.selectedVoiceUri });
+        });
+
+        DOM.ttsToggleBtn?.addEventListener('click', () => {
+          if (this.state === 'stopped') {
+            this.start();
+          } else if (this.state === 'playing') {
+            this.pause();
+          } else if (this.state === 'paused') {
+            this.resume();
+          }
+        });
+
+        DOM.ttsStopBtn?.addEventListener('click', () => this.stop());
+
+        DOM.ttsRateSlider?.addEventListener('input', (e) => {
+          const val = e.target.value;
+          if (DOM.ttsRateVal) DOM.ttsRateVal.textContent = `${val}x`;
+          SettingsManager.save({ ttsRate: parseFloat(val) });
+        });
+
+        DOM.ttsPitchSlider?.addEventListener('input', (e) => {
+          const val = e.target.value;
+          if (DOM.ttsPitchVal) DOM.ttsPitchVal.textContent = val;
+          SettingsManager.save({ ttsPitch: parseFloat(val) });
+        });
+
+        window.addEventListener('beforeunload', () => {
+          if (this.synth) this.synth.cancel();
+        });
+      },
+
+      populateVoiceList() {
+        if (!this.synth || !DOM.voiceSelect) return;
+
+        this.availableVoices = this.synth.getVoices();
+        const jaVoices = this.availableVoices.filter(v => v.lang.startsWith('ja') || v.lang.includes('JP'));
+
+        DOM.voiceSelect.innerHTML = '';
+
+        if (jaVoices.length === 0) {
+          const opt = document.createElement('option');
+          opt.textContent = '標準の日本語音声';
+          opt.value = '';
+          opt.className = 'bg-[var(--bg-color)]';
+          DOM.voiceSelect.appendChild(opt);
+          return;
+        }
+
+        const savedVoice = SettingsManager.current.ttsVoice;
+
+        jaVoices.forEach(voice => {
+          const opt = document.createElement('option');
+          opt.textContent = `${voice.name} (${voice.lang})`;
+          opt.value = voice.voiceURI;
+          opt.className = 'bg-[var(--bg-color)]';
+
+          if (savedVoice ? voice.voiceURI === savedVoice : (!this.selectedVoiceUri && voice.default)) {
+            opt.selected = true;
+            this.selectedVoiceUri = voice.voiceURI;
+          }
+          DOM.voiceSelect.appendChild(opt);
+        });
+      },
+
+      getCleanText() {
+        if (!DOM.novelContainer) return '';
+        const clone = DOM.novelContainer.cloneNode(true);
+        // <rt>タグを除外して二重読み上げを防止
+        clone.querySelectorAll('rt').forEach(rt => rt.remove());
+        clone.querySelectorAll('script, style, hr').forEach(el => el.remove());
+        return (clone.innerText || clone.textContent || '').trim();
+      },
+
+      splitIntoChunks(text) {
+        const rawSentences = text.split(/([。\n！？\?!]+)/);
+        const chunks = [];
+        for (let i = 0; i < rawSentences.length; i += 2) {
+          const part = (rawSentences[i] || '') + (rawSentences[i + 1] || '');
+          const trimmed = part.trim();
+          if (trimmed) chunks.push(trimmed);
+        }
+        return chunks.length > 0 ? chunks : [text.trim()];
+      },
+
+      updateUI() {
+        if (!DOM.ttsToggleBtn || !DOM.ttsBtnText || !DOM.ttsIcon) return;
+
+        if (this.state === 'playing') {
+          DOM.ttsToggleBtn.classList.add('border-amber-900/40', 'bg-amber-900/10', 'text-amber-800', 'dark:text-amber-400');
+          DOM.ttsStopBtn?.classList.remove('hidden');
+          DOM.ttsBtnText.textContent = '一時停止';
+          DOM.ttsIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+        } else if (this.state === 'paused') {
+          DOM.ttsToggleBtn.classList.add('border-amber-900/40', 'bg-amber-900/10', 'text-amber-800', 'dark:text-amber-400');
+          DOM.ttsStopBtn?.classList.remove('hidden');
+          DOM.ttsBtnText.textContent = '再開';
+          DOM.ttsIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+        } else {
+          DOM.ttsToggleBtn.classList.remove('border-amber-900/40', 'bg-amber-900/10', 'text-amber-800', 'dark:text-amber-400');
+          DOM.ttsStopBtn?.classList.add('hidden');
+          DOM.ttsBtnText.textContent = '朗読';
+          DOM.ttsIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>';
+        }
+      },
+
+      speakNext() {
+        if (!this.synth || this.state !== 'playing') return;
+
+        if (this.currentIndex >= this.sentences.length) {
+          this.stop();
+          return;
+        }
+
+        const sentence = this.sentences[this.currentIndex];
+        this.currentUtterance = new SpeechSynthesisUtterance(sentence);
+        this.currentUtterance.lang = 'ja-JP';
+
+        if (this.selectedVoiceUri && this.availableVoices.length > 0) {
+          const matchedVoice = this.availableVoices.find(v => v.voiceURI === this.selectedVoiceUri);
+          if (matchedVoice) this.currentUtterance.voice = matchedVoice;
+        } else if (this.availableVoices.length > 0) {
+          const defaultJa = this.availableVoices.find(v => v.lang.startsWith('ja') || v.lang.includes('JP'));
+          if (defaultJa) this.currentUtterance.voice = defaultJa;
+        }
+
+        this.currentUtterance.rate = parseFloat(DOM.ttsRateSlider ? DOM.ttsRateSlider.value : 1.0) || 1.0;
+        this.currentUtterance.pitch = parseFloat(DOM.ttsPitchSlider ? DOM.ttsPitchSlider.value : 1.0) || 1.0;
+
+        this.currentUtterance.onend = () => {
+          if (this.state === 'playing') {
+            this.currentIndex++;
+            this.speakNext();
+          }
+        };
+
+        this.currentUtterance.onerror = (e) => {
+          if (e.error !== 'canceled' && e.error !== 'interrupted') {
+            console.warn('SpeechSynthesis error:', e);
+            if (this.state === 'playing') {
+              this.currentIndex++;
+              this.speakNext();
+            }
+          }
+        };
+
+        this.synth.speak(this.currentUtterance);
+      },
+
+      start() {
+        if (!this.synth) {
+          alert('お使いのブラウザは音声読み上げ機能（Web Speech API）に対応していません。');
+          return;
+        }
+
+        const cleanText = this.getCleanText();
+        if (!cleanText) return;
+
+        this.synth.cancel();
+        this.sentences = this.splitIntoChunks(cleanText);
+        if (this.sentences.length === 0) return;
+
+        this.currentIndex = 0;
+        this.state = 'playing';
+        this.updateUI();
+        this.speakNext();
+      },
+
+      pause() {
+        if (!this.synth) return;
+        this.synth.pause();
+        this.state = 'paused';
+        this.updateUI();
+      },
+
+      resume() {
+        if (!this.synth) return;
+        this.synth.resume();
+        this.state = 'playing';
+        this.updateUI();
+        if (!this.synth.speaking) {
+          this.speakNext();
+        }
+      },
+
+      stop() {
+        if (!this.synth) return;
+        this.synth.cancel();
+        this.state = 'stopped';
+        this.currentIndex = 0;
+        this.updateUI();
+      }
+    };
+
+    // ==========================================
+    // 9. BackgroundManager (背景画像・プリセット・クリップボード貼付・通知)
+    // ==========================================
+    const BackgroundManager = {
+      currentType: null, // 'preset' | 'custom' | null
+      toastTimeout: null,
+
+      init() {
+        DOM.presetBookcafeBtn?.addEventListener('click', () => {
+          if (this.currentType === 'preset') {
+            this.setImage(null, '', false, true);
+          } else {
+            this.setImage('bookcafe_min.jpg', 'ブックカフェ', true, true);
+          }
+        });
+
+        DOM.clearBgBtn?.addEventListener('click', () => {
+          this.setImage(null, '', false, true);
+        });
+
+        DOM.bgOpacitySlider?.addEventListener('input', (e) => {
+          const val = e.target.value;
+          if (DOM.bgOpacityVal) DOM.bgOpacityVal.textContent = `${val}%`;
+          if (DOM.bgImageLayer) DOM.bgImageLayer.style.opacity = (val / 100).toString();
+          SettingsManager.save({ bgOpacity: parseInt(val, 10) });
+        });
+
+        DOM.bgBlurSlider?.addEventListener('input', (e) => {
+          const val = e.target.value;
+          if (DOM.bgBlurVal) DOM.bgBlurVal.textContent = `${val}px`;
+          if (DOM.bgImageLayer) DOM.bgImageLayer.style.filter = `blur(${val}px)`;
+          SettingsManager.save({ bgBlur: parseInt(val, 10) });
+        });
+
+        DOM.bgImageInput?.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            this.handleImageFile(e.target.files[0]);
+          }
+        });
+
+        DOM.headerPasteBgBtn?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.pasteFromClipboard();
+        });
+
+        DOM.panelPasteBgBtn?.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.pasteFromClipboard();
+        });
+
+        // グローバルショートカット貼付 (Ctrl+V / Cmd+V)
+        window.addEventListener('paste', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          for (const item of items) {
+            if (item.type.startsWith('image/')) {
+              const file = item.getAsFile();
+              if (file) {
+                this.handleImageFile(file);
+                this.showToast('画像を背景に設定しました', '🖼️');
+                e.preventDefault();
+                break;
+              }
+            }
+          }
+        });
+      },
+
+      setImage(url, label = '', isPreset = false, save = true) {
+        if (!DOM.bgImageLayer) return;
+
+        if (!url) {
+          DOM.bgImageLayer.style.backgroundImage = 'none';
+          DOM.bgImageLayer.style.display = 'none';
+          DOM.bgControlsContainer?.classList.add('hidden');
+          DOM.clearBgBtn?.classList.add('hidden');
+          if (DOM.bgFileLabel) DOM.bgFileLabel.textContent = '画像を選択';
+          if (DOM.bgImageInput) DOM.bgImageInput.value = '';
+          this.currentType = null;
+          if (DOM.presetBookcafeBadge) DOM.presetBookcafeBadge.textContent = '適用';
+          DOM.presetBookcafeBtn?.classList.remove('ring-2', 'ring-amber-700', 'bg-amber-900/10');
+          if (save) SettingsManager.save({ bgPreset: false });
+          return;
+        }
+
+        DOM.bgImageLayer.style.backgroundImage = `url("${url}")`;
+        DOM.bgImageLayer.style.display = 'block';
+        DOM.bgControlsContainer?.classList.remove('hidden');
+        DOM.clearBgBtn?.classList.remove('hidden');
+
+        if (isPreset) {
+          this.currentType = 'preset';
+          if (DOM.bgFileLabel) DOM.bgFileLabel.textContent = '画像を選択';
+          if (DOM.bgImageInput) DOM.bgImageInput.value = '';
+          if (DOM.presetBookcafeBadge) DOM.presetBookcafeBadge.textContent = '解除';
+          DOM.presetBookcafeBtn?.classList.add('ring-2', 'ring-amber-700', 'bg-amber-900/10');
+          if (save) SettingsManager.save({ bgPreset: true });
+        } else {
+          this.currentType = 'custom';
+          if (DOM.presetBookcafeBadge) DOM.presetBookcafeBadge.textContent = '適用';
+          DOM.presetBookcafeBtn?.classList.remove('ring-2', 'ring-amber-700', 'bg-amber-900/10');
+          if (DOM.bgFileLabel && label) {
+            DOM.bgFileLabel.textContent = label.length > 12 ? label.slice(0, 10) + '…' : label;
+          }
+          if (save) SettingsManager.save({ bgPreset: false });
+        }
+      },
+
+      handleImageFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.setImage(e.target.result, file.name, false, false);
+        };
+        reader.readAsDataURL(file);
+      },
+
+      async pasteFromClipboard() {
+        if (navigator.clipboard && navigator.clipboard.read) {
+          try {
+            const items = await navigator.clipboard.read();
+            for (const item of items) {
+              const imgType = item.types.find(t => t.startsWith('image/'));
+              if (imgType) {
+                const blob = await item.getType(imgType);
+                const file = new File([blob], 'clipboard_image.png', { type: blob.type || 'image/png' });
+                this.handleImageFile(file);
+                this.showToast('コピーした画像を背景に設定しました', '🖼️');
+                return;
+              }
+            }
+            this.showToast('クリップボードに画像がありません', '⚠️');
+            return;
+          } catch (err) {
+            console.warn('Clipboard read error:', err);
+            this.showToast('クリップボードの読み取りが拒否されました (Ctrl+Vもお試しください)', '⚠️');
+            return;
+          }
+        }
+        this.showToast('画面上で Ctrl + V を押して貼り付けてください', 'ℹ️');
+      },
+
+      showToast(message, icon = '📋') {
+        if (!DOM.toastNotify || !DOM.toastText) return;
+        DOM.toastText.textContent = message;
+        if (DOM.toastIcon) DOM.toastIcon.textContent = icon;
+        DOM.toastNotify.classList.add('toast-visible');
+
+        clearTimeout(this.toastTimeout);
+        this.toastTimeout = setTimeout(() => {
+          DOM.toastNotify.classList.remove('toast-visible');
+        }, 2200);
+      }
+    };
+
+    // ==========================================
+    // 10. FileLoader (原稿ロード・D&D・外部URL取得・エラー案内)
+    // ==========================================
+    const FileLoader = {
+      init() {
+        DOM.fileInput?.addEventListener('change', (e) => {
+          if (e.target.files.length > 0) {
+            this.handleFile(e.target.files[0]);
+          }
+        });
+
+        // ドラッグ＆ドロップ
+        window.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          DOM.dropZone?.classList.remove('hidden');
+        });
+
+        DOM.dropZone?.addEventListener('dragleave', (e) => {
+          if (e.relatedTarget === null || e.target === DOM.dropZone) {
+            DOM.dropZone?.classList.add('hidden');
+          }
+        });
+
+        DOM.dropZone?.addEventListener('drop', (e) => {
+          e.preventDefault();
+          DOM.dropZone?.classList.add('hidden');
+          if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            this.handleIncomingFile(e.dataTransfer.files[0]);
+          }
+        });
+      },
+
+      loadContent(markdownText, filename = '無題の原稿') {
+        TTSManager.stop();
+        if (DOM.novelContainer) DOM.novelContainer.innerHTML = NovelParser.parse(markdownText);
+        if (DOM.docTitle) DOM.docTitle.textContent = filename;
+        TocManager.render(NovelParser.tocList);
+
+        requestAnimationFrame(() => {
+          if (!DOM.viewport) return;
+          if (ReaderState.writingMode === 'vertical') {
+            DOM.viewport.scrollLeft = 0;
+          } else {
+            DOM.viewport.scrollTop = 0;
+          }
+          ReaderState.updateProgress();
+        });
+      },
+
+      handleFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.loadContent(e.target.result, file.name);
+        };
+        reader.readAsText(file, 'UTF-8');
+      },
+
+      handleIncomingFile(file) {
+        if (!file) return;
+        if (file.type.startsWith('image/')) {
+          BackgroundManager.handleImageFile(file);
+        } else {
+          this.handleFile(file);
+        }
+      },
+
+      resolveMarkdownUrl(urlStr) {
+        try {
+          const url = new URL(urlStr);
+          if (url.hostname === 'gist.github.com') {
+            const parts = url.pathname.split('/').filter(Boolean);
+            if (parts.length >= 2) {
+              if (!url.pathname.endsWith('/raw')) {
+                url.pathname = `/${parts[0]}/${parts[1]}/raw`;
+              }
+              url.hash = '';
+              return url.toString();
+            }
+          }
+          if (url.hostname === 'github.com' && url.pathname.includes('/blob/')) {
+            return urlStr
+              .replace('github.com', 'raw.githubusercontent.com')
+              .replace('/blob/', '/');
+          }
+          return urlStr;
+        } catch (e) {
+          return urlStr;
+        }
+      },
+
+      extractTitleFromMarkdown(markdown, defaultUrl) {
+        const h1Match = markdown.match(/^#\s+(.+)$/m);
+        if (h1Match && h1Match[1].trim()) {
+          return stripNovelFormatting(h1Match[1]);
+        }
+        try {
+          const url = new URL(defaultUrl);
+          const filename = url.pathname.substring(url.pathname.lastIndexOf('/') + 1);
+          if (filename && filename !== 'raw') {
+            return decodeURIComponent(filename);
+          }
+        } catch (e) {}
+        return '外部原稿';
+      },
+
+      async loadFromUrlParam(targetUrl) {
+        TTSManager.stop();
+        const resolvedUrl = this.resolveMarkdownUrl(targetUrl);
+        if (DOM.docTitle) DOM.docTitle.textContent = '原稿を読み込み中…';
+
+        if (DOM.novelContainer) {
+          DOM.novelContainer.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-24 px-4 text-center font-sans space-y-4" style="writing-mode: horizontal-tb; width: 100%;">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-amber-700 border-t-transparent"></div>
+              <p class="text-sm font-medium">外部の原稿（Markdown）を取得しています…</p>
+              <p class="text-xs opacity-60 font-mono truncate max-w-xs sm:max-w-md">${escapeHtml(targetUrl)}</p>
+            </div>
+          `;
+        }
+
+        try {
+          const res = await fetch(resolvedUrl);
+          if (!res.ok) {
+            throw new Error(`HTTPステータス: ${res.status} (${res.statusText || 'エラー'})`);
+          }
+          const markdown = await res.text();
+          const novelTitle = this.extractTitleFromMarkdown(markdown, targetUrl);
+          this.loadContent(markdown, novelTitle);
+        } catch (err) {
+          console.warn('URLからの原稿取得に失敗しました:', err);
+          this.showUrlLoadError(targetUrl, err);
+        }
+      },
+
+      showUrlLoadError(targetUrl, err) {
+        if (DOM.docTitle) DOM.docTitle.textContent = '読み込みエラー';
+
+        const isCors = err.name === 'TypeError' || String(err).includes('Failed to fetch');
+        const reasonMsg = isCors
+          ? 'サイト側から直接の取得（CORS）が制限されています'
+          : `原稿の取得に失敗しました（${escapeHtml(err.message)}）`;
+
+        if (!DOM.novelContainer) return;
+        DOM.novelContainer.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 px-6 text-center font-sans space-y-5" style="writing-mode: horizontal-tb; width: 100%; max-width: 540px; margin: 0 auto;">
+            <div class="w-12 h-12 rounded-full bg-red-500/15 text-red-500 flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+
+            <div class="space-y-2">
+              <h2 class="text-base font-bold text-red-600 dark:text-red-400">原稿を読み込めませんでした</h2>
+              <p class="text-sm font-semibold opacity-90">${reasonMsg}</p>
+              <div class="text-xs opacity-75 leading-relaxed text-left bg-black/5 dark:bg-white/5 p-3.5 rounded-lg border border-current/10 space-y-1.5 mt-3">
+                <p>・<strong>GitHub Gist</strong> の場合は、ファイルの「Raw」ボタンのURL、または公開GistのURLをご指定ください。</p>
+                <p>・外部サイト側が他サイトからの直接データ取得（CORS）を許可していない場合、ブラウザのセキュリティ制限により読み込みが遮断されます。</p>
+                <p>・ファイルを端末にダウンロードし、画面上にドラッグ＆ドロップするかヘッダーの「開く」ボタンから直接読み込むこともできます。</p>
+              </div>
+              <p class="text-[11px] opacity-50 font-mono break-all pt-1">${escapeHtml(targetUrl)}</p>
+            </div>
+
+            <div class="pt-2">
+              <button id="fallback-sample-btn" class="px-4 py-2 rounded-lg bg-amber-800 text-white hover:bg-amber-700 transition text-xs font-medium shadow-sm">
+                サンプル小説を表示する
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('fallback-sample-btn')?.addEventListener('click', () => {
+          this.loadContent(sampleNovel, '縦書文庫の手引き（使い方）');
+        });
+      }
+    };
+
+    // ==========================================
+    // 11. Global Compatibility Aliases (下位互換性確保)
+    // ==========================================
+    const loadContent = FileLoader.loadContent.bind(FileLoader);
+    const turnPage = ReaderState.turnPage.bind(ReaderState);
+    const setWritingMode = ReaderState.setWritingMode.bind(ReaderState);
+    const openToc = PanelManager.openToc.bind(PanelManager);
+    const closeToc = PanelManager.closeToc.bind(PanelManager);
+    const toggleToc = PanelManager.toggleToc.bind(PanelManager);
+    const scrollToHeading = TocManager.scrollToHeading.bind(TocManager);
+    const setBackgroundImage = BackgroundManager.setImage.bind(BackgroundManager);
+    const pasteImageFromClipboard = BackgroundManager.pasteFromClipboard.bind(BackgroundManager);
+    const showToast = BackgroundManager.showToast.bind(BackgroundManager);
+    const startTTS = TTSManager.start.bind(TTSManager);
+    const pauseTTS = TTSManager.pause.bind(TTSManager);
+    const resumeTTS = TTSManager.resume.bind(TTSManager);
+    const stopTTS = TTSManager.stop.bind(TTSManager);
+
+    // ==========================================
+    // 12. Application Initialization
+    // ==========================================
+    function initApp() {
+      // 保存設定の読み込み
+      SettingsManager.load();
+
+      // 各モジュールのイベントリスナー初期化
+      PanelManager.init();
+      ReaderState.init();
+      TTSManager.init();
+      BackgroundManager.init();
+      FileLoader.init();
+
+      // 設定パネル内の直接コントロール（テーマ・文字サイズ・行間・フォント）
+      DOM.themeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const theme = btn.getAttribute('data-theme-set');
+          SettingsManager.applyTheme(theme, true);
+        });
+      });
+
+      DOM.fontSizeSlider?.addEventListener('input', (e) => {
+        const size = parseInt(e.target.value, 10);
+        if (DOM.novelContainer) DOM.novelContainer.style.fontSize = `${size}px`;
+        if (DOM.fontSizeVal) DOM.fontSizeVal.textContent = `${size}px`;
+        ReaderState.updateProgress();
+        SettingsManager.save({ fontSize: size });
+      });
+
+      DOM.lineHeightSlider?.addEventListener('input', (e) => {
+        const lh = parseFloat(e.target.value);
+        if (DOM.novelContainer) DOM.novelContainer.style.lineHeight = lh;
+        if (DOM.lineHeightVal) DOM.lineHeightVal.textContent = lh;
+        ReaderState.updateProgress();
+        SettingsManager.save({ lineHeight: lh });
+      });
+
+      DOM.fontShippori?.addEventListener('click', () => {
+        SettingsManager.applyFont('shippori', true);
+      });
+
+      DOM.fontNoto?.addEventListener('click', () => {
+        SettingsManager.applyFont('noto', true);
+      });
+
+      // 設定値の一括適用（テーマ、フォント、組み方向、背景、TTS等）
+      SettingsManager.applyAll();
+
+      // URLパラメータの確認 または サンプル小説の読み込み
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetUrl = urlParams.get('url') || urlParams.get('URL');
+
+      if (targetUrl) {
+        FileLoader.loadFromUrlParam(targetUrl);
+      } else {
+        FileLoader.loadContent(sampleNovel, '縦書文庫の手引き（使い方）');
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
+  </script>
+</body>
+
+</html>
