@@ -478,8 +478,9 @@
         .replace(/《《([^》]+)》》/g, '$1')             // 《《傍点》》
         .replace(/[|｜]?\[([^\]]+)\]\([^)]+\)/g, '$1')  // [text](url) または |[text](url)
         .replace(/`([^`\r\n]+)`/g, '$1')                // `code`
-        .replace(/\*\*([^*]+)\*\*/g, '$1')              // **bold**
-        .replace(/\*([^*]+)\*/g, '$1')                  // *italic*
+        .replace(/\*\*\*(.+?)\*\*\*/g, '$1')            // ***bold italic***
+        .replace(/\*\*(.+?)\*\*/g, '$1')                // **bold**
+        .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '$1') // *italic*
         .trim();
     }
 
@@ -1060,9 +1061,10 @@
         // 4. 縦中横（2桁以内の数字）
         res = res.replace(/\b(\d{1,2})\b/g, '<span class="tcy">$1</span>');
 
-        // 5. 太字・斜体
-        res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        res = res.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        // 5. 太字・斜体（***太字斜体*** → **太字** → *斜体* の順で処理しタグ交差や未閉じ**との干渉を防止）
+        res = res.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        res = res.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        res = res.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
 
         // 6. リンク復元
         links.forEach((item, index) => {

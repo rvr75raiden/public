@@ -192,6 +192,15 @@ body[data-theme="dark"] {
   display: inline-block;
 }
 
+.novel-content strong,
+.novel-content b {
+  font-weight: 700;
+}
+
+.novel-content em {
+  font-style: italic;
+}
+
 /* ルビ・傍点・縦中横 */
 ruby {
   ruby-align: center;
